@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
 import { estimatePrice, type PriceEstimate } from "@/lib/gemini-pricing";
+import { CONDICOES } from "@/lib/gemini-analysis";
 import {
   loadPriceHistoryForItem,
   savePriceEstimate,
@@ -19,6 +20,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete01Icon } from "@hugeicons/core-free-icons";
 
@@ -65,6 +73,9 @@ export function PriceEstimateModal({
   React.useEffect(() => {
     if (open) {
       refreshHistory();
+      // Auto-preenche com dados da análise (se disponíveis)
+      setQualidade(entry?.condicao || "");
+      setMarca(entry?.marca || "");
     } else {
       setQualidade("");
       setMarca("");
@@ -140,22 +151,27 @@ export function PriceEstimateModal({
         </AlertDialogHeader>
 
         <div className="flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
-          {/* Qualidade */}
+          {/* Qualidade / Condição */}
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="price-qualidade"
-              className="text-muted-foreground text-xs font-medium"
-            >
-              Qualidade / Estado da peça
+            <label className="text-muted-foreground text-xs font-medium">
+              Condição / Estado da peça
             </label>
-            <Input
-              id="price-qualidade"
-              type="text"
-              placeholder='Ex: "nova com etiqueta", "usada - bom estado", "usada - desgastada"'
+            <Select
               value={qualidade}
-              onChange={(e) => setQualidade(e.target.value)}
+              onValueChange={setQualidade}
               disabled={loading}
-            />
+            >
+              <SelectTrigger className="w-full capitalize">
+                <SelectValue placeholder="Selecione a condição" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONDICOES.map((c) => (
+                  <SelectItem key={c} value={c} className="capitalize">
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Marca */}
@@ -181,7 +197,7 @@ export function PriceEstimateModal({
             <div className="flex items-center gap-3 py-2">
               <div className="border-primary h-4 w-4 animate-spin border-2 border-t-transparent" />
               <span className="text-muted-foreground text-xs">
-                Estimando preço com Gemini...
+                Estimando preço...
               </span>
             </div>
           )}

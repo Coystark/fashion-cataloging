@@ -57,6 +57,8 @@ const LABELS: Record<keyof ClothingAnalysis, string> = {
   ocasiao: "Ocasião",
   comprimento: "Comprimento",
   genero: "Gênero",
+  condicao: "Condição",
+  marca: "Marca",
 };
 
 /* ------------------------------------------------------------------ */
@@ -555,7 +557,7 @@ export function ImageAnalyzer() {
               <span className="text-muted-foreground text-xs">
                 Analisando{" "}
                 {images.length === 1 ? "imagem" : `${images.length} imagens`}{" "}
-                com Gemini...
+                ...
               </span>
             </div>
           </CardContent>
@@ -637,9 +639,7 @@ export function ImageAnalyzer() {
                     <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
                       {LABELS[key]}
                     </span>
-                    <span className="text-sm capitalize">
-                      {value as string}
-                    </span>
+                    <span className="text-sm capitalize">{value || "-"}</span>
                   </div>
                 );
               })}
@@ -962,6 +962,24 @@ export function ImageAnalyzer() {
                         </span>
                         <span className="text-xs capitalize">
                           {entry.genero || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Condição
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.condicao || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Marca
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.marca || "—"}
                         </span>
                       </div>
                     </div>

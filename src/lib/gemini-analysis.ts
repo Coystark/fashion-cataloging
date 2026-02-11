@@ -183,6 +183,12 @@ const COMPRIMENTOS = [
 
 const GENEROS = ["feminino", "masculino", "unissex", "infantil"] as const;
 
+export const CONDICOES = [
+  "gentilmente usada",
+  "tão boa quanto nova",
+  "nova com etiqueta",
+] as const;
+
 const BASE_PROMPT = `Você é um especialista em catalogação de moda. Analise as imagens fornecidas da peça de roupa (podem ser fotos da frente, costas e zoom no tecido) e retorne APENAS um JSON seguindo estas regras:
 
 titulo_sugerido: Crie um título curto e atrativo para anúncio/catálogo do produto (máximo 80 caracteres). Deve ser descritivo e incluir a categoria, cor principal e um diferencial da peça. Exemplos: "Vestido Midi Preto Tubinho com Fenda", "Camisa Social Listrada Azul Manga Longa", "Blusa Floral Rosa Evasê com Babados".
@@ -219,6 +225,12 @@ genero: Classifique o gênero alvo da peça. Escolha EXATAMENTE um valor da list
   ", "
 )}].
 
+condicao (OPCIONAL): Se for possível identificar a condição/estado de uso da peça pelas imagens (por exemplo, se houver etiqueta visível, sinais de uso, etc.), escolha EXATAMENTE um valor da lista: [${CONDICOES.join(
+  ", "
+)}]. Caso não seja possível determinar pela foto, omita este campo.
+
+marca (OPCIONAL): Se for possível identificar a marca da peça pelas imagens (por exemplo, se houver etiqueta, logo ou estampa da marca visível), informe o nome da marca. Caso não seja possível determinar pela foto, omita este campo.
+
 IMPORTANTE:
 - Considere TODAS as imagens enviadas em conjunto para fazer uma análise mais completa e precisa da peça.
 - Use APENAS valores das listas fornecidas acima para os campos com listas. Não invente valores fora das listas.
@@ -239,7 +251,8 @@ Exemplo 1 — Vestido de festa preto:
   "material": "crepe",
   "ocasiao": "festa/evento",
   "comprimento": "midi",
-  "genero": "feminino"
+  "genero": "feminino",
+  "condicao": "gentilmente usada"
 }
 
 Exemplo 2 — Camisa social masculina listrada:
@@ -254,7 +267,8 @@ Exemplo 2 — Camisa social masculina listrada:
   "material": "algodão",
   "ocasiao": "trabalho/escritório",
   "comprimento": "médio",
-  "genero": "masculino"
+  "genero": "masculino",
+  "marca": "Ralph Lauren"
 }
 
 Exemplo 3 — Blusa feminina floral casual:
@@ -269,7 +283,9 @@ Exemplo 3 — Blusa feminina floral casual:
   "material": "viscose",
   "ocasiao": "casual",
   "comprimento": "curto",
-  "genero": "feminino"
+  "genero": "feminino",
+  "condicao": "nova com etiqueta",
+  "marca": "Farm"
 }
 
 FORMATO DE SAÍDA (retorne APENAS o JSON, sem texto adicional):
@@ -284,7 +300,9 @@ FORMATO DE SAÍDA (retorne APENAS o JSON, sem texto adicional):
   "material": "",
   "ocasiao": "",
   "comprimento": "",
-  "genero": ""
+  "genero": "",
+  "condicao": "",
+  "marca": ""
 }`;
 
 const RESPONSE_SCHEMA = {
@@ -333,6 +351,13 @@ const RESPONSE_SCHEMA = {
     genero: {
       type: Type.STRING,
       enum: [...GENEROS],
+    },
+    condicao: {
+      type: Type.STRING,
+      enum: [...CONDICOES],
+    },
+    marca: {
+      type: Type.STRING,
     },
   },
   required: [

@@ -10,6 +10,8 @@ export interface ClothingAnalysis {
   ocasiao: string;
   comprimento: string;
   genero: string;
+  condicao?: string;
+  marca?: string;
 }
 
 export interface AnalysisUsage {
