@@ -22,6 +22,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 
 const LABELS: Record<keyof ClothingAnalysis, string> = {
   categoria: "Categoria",
+  cor: "Cor",
   corte_silhueta: "Corte / Silhueta",
   detalhes_estilo: "Detalhes de Estilo",
   estampa: "Estampa",
@@ -566,6 +567,13 @@ export function ImageAnalyzer() {
                       <span className="text-muted-foreground text-[10px]">
                         {new Date(entry.analyzedAt).toLocaleDateString("pt-BR")}
                       </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                        Cor
+                      </span>
+                      <span className="text-xs capitalize">{entry.cor}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">

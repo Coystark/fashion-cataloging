@@ -9,6 +9,8 @@ const BASE_PROMPT = `Você é um especialista em catalogação de moda. Analise 
 
 categoria: (ex: vestido, camiseta, calça, body, saia, shorts, blazer, jaqueta, etc.).
 
+cor: A cor predominante da peça (ex: preto, branco, azul, vermelho, rosa, verde, bege, marrom, cinza, amarelo, laranja, roxo, multicolorido, etc.). Se houver mais de uma cor relevante, separe com " e " (ex: "preto e branco").
+
 corte_silhueta: Se for vestido, escolha um valor: [tubinho, evasê, sereia, envelope, império, chemise, reto, outro]. Para outras peças, descreva o corte principal.
 
 detalhes_estilo: Se for vestido, retorne uma lista com os atributos aplicáveis: [tomara que caia, frente única, com alças, manga longa, fenda, babados, plissado, outro]. Para outras peças, liste os detalhes de estilo visíveis.
@@ -18,6 +20,7 @@ estampa: (ex: bolinhas, liso, floral, listrado, xadrez).
 FORMATO DE SAÍDA:
 {
   "categoria": "",
+  "cor": "",
   "corte_silhueta": "",
   "detalhes_estilo": [],
   "estampa": ""

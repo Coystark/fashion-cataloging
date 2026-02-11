@@ -1,5 +1,6 @@
 export interface ClothingAnalysis {
   categoria: string;
+  cor: string;
   corte_silhueta: string;
   detalhes_estilo: string[];
   estampa: string;
