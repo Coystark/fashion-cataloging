@@ -1,6 +1,13 @@
 import * as React from "react";
-import type { AnalysisEntry } from "@/types/clothing";
+import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
 import { estimatePrice, type PriceEstimate } from "@/lib/gemini-pricing";
+import {
+  loadPriceHistoryForItem,
+  savePriceEstimate,
+  deletePriceEstimate,
+  computeItemAverages,
+  type ItemPriceAverage,
+} from "@/lib/history";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -12,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete01Icon } from "@hugeicons/core-free-icons";
 
 const fmtBRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -35,16 +44,38 @@ export function PriceEstimateModal({
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<PriceEstimate | null>(null);
 
-  // Reseta estado quando o modal abre/fecha
+  // Histórico de estimativas deste item
+  const [itemHistory, setItemHistory] = React.useState<PriceEstimateEntry[]>(
+    []
+  );
+  const [averages, setAverages] = React.useState<ItemPriceAverage | null>(null);
+
+  function refreshHistory() {
+    if (!entry) {
+      setItemHistory([]);
+      setAverages(null);
+      return;
+    }
+    const history = loadPriceHistoryForItem(entry.id);
+    setItemHistory(history);
+    setAverages(computeItemAverages(history));
+  }
+
+  // Carrega histórico do item quando o modal abre; reseta form quando fecha
   React.useEffect(() => {
-    if (!open) {
+    if (open) {
+      refreshHistory();
+    } else {
       setQualidade("");
       setMarca("");
       setLoading(false);
       setError(null);
       setResult(null);
+      setItemHistory([]);
+      setAverages(null);
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, entry?.id]);
 
   async function handleEstimate() {
     if (!entry || !qualidade.trim() || !marca.trim()) return;
@@ -60,6 +91,23 @@ export function PriceEstimateModal({
         marca.trim()
       );
       setResult(estimate);
+
+      // Salva no histórico vinculado a este item
+      const priceEntry: PriceEstimateEntry = {
+        id: crypto.randomUUID(),
+        analysisId: entry.id,
+        categoria: entry.categoria,
+        marca: marca.trim(),
+        qualidade: qualidade.trim(),
+        tituloSugerido: entry.titulo_sugerido,
+        precoMinimo: estimate.precoMinimo,
+        precoMaximo: estimate.precoMaximo,
+        precoSugerido: estimate.precoSugerido,
+        justificativa: estimate.justificativa,
+        estimatedAt: new Date().toISOString(),
+      };
+      savePriceEstimate(priceEntry);
+      refreshHistory();
     } catch (err) {
       console.error(err);
       setError(
@@ -72,11 +120,16 @@ export function PriceEstimateModal({
     }
   }
 
+  function handleDeleteEstimate(id: string) {
+    deletePriceEstimate(id);
+    refreshHistory();
+  }
+
   const canSubmit = qualidade.trim().length > 0 && marca.trim().length > 0;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-md sm:max-w-md">
+      <AlertDialogContent className="max-w-lg sm:max-w-lg max-h-[85vh] flex flex-col">
         <AlertDialogHeader>
           <AlertDialogTitle>Estimar Preço</AlertDialogTitle>
           <AlertDialogDescription>
@@ -86,7 +139,7 @@ export function PriceEstimateModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
           {/* Qualidade */}
           <div className="flex flex-col gap-1.5">
             <label
@@ -172,6 +225,126 @@ export function PriceEstimateModal({
                 <p className="text-xs leading-relaxed text-foreground/80 mt-0.5">
                   {result.justificativa}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* -------------------------------------------------------- */}
+          {/*  Média das estimativas deste item                         */}
+          {/* -------------------------------------------------------- */}
+          {averages && averages.count >= 2 && (
+            <div className="flex flex-col gap-2 border-t border-border pt-3 mt-1">
+              <span className="text-xs font-semibold tracking-tight">
+                Média das Estimativas
+                <span className="text-muted-foreground font-normal ml-1">
+                  ({averages.count} estimativas)
+                </span>
+              </span>
+              <div className="bg-muted/40 border border-border rounded-md px-3 py-2 grid grid-cols-3 gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                    Média Mín.
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {fmtBRL.format(averages.avgMinimo)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                    Média Sug.
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums text-primary">
+                    {fmtBRL.format(averages.avgSugerido)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                    Média Máx.
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {fmtBRL.format(averages.avgMaximo)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* -------------------------------------------------------- */}
+          {/*  Histórico de estimativas deste item                      */}
+          {/* -------------------------------------------------------- */}
+          {itemHistory.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-border pt-3 mt-1">
+              <span className="text-xs font-semibold tracking-tight">
+                Histórico de Estimativas
+              </span>
+              <div className="flex flex-col gap-1.5 max-h-52 overflow-y-auto">
+                {itemHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group/item bg-muted/30 border border-border rounded-md px-3 py-2 flex flex-col gap-1.5 relative"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground">
+                          {item.marca}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          ·
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {item.qualidade}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className="opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0 cursor-pointer"
+                        onClick={() => handleDeleteEstimate(item.id)}
+                        title="Remover estimativa"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete01Icon}
+                          className="h-3 w-3"
+                        />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                          Mínimo
+                        </span>
+                        <span className="text-[11px] font-semibold tabular-nums">
+                          {fmtBRL.format(item.precoMinimo)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                          Sugerido
+                        </span>
+                        <span className="text-[11px] font-semibold tabular-nums text-primary">
+                          {fmtBRL.format(item.precoSugerido)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                          Máximo
+                        </span>
+                        <span className="text-[11px] font-semibold tabular-nums">
+                          {fmtBRL.format(item.precoMaximo)}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(item.estimatedAt).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

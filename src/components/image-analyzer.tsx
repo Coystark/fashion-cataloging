@@ -12,6 +12,8 @@ import {
   deleteAnalysis,
   clearHistory,
   resizeMultipleImages,
+  loadPriceHistoryForItem,
+  computeItemAverages,
 } from "@/lib/history";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +96,58 @@ function uniqueDetailsValues(entries: AnalysisEntry[]): string[] {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Mini-componente: média de preço no card                            */
+/* ------------------------------------------------------------------ */
+
+function CardPriceAverage({
+  analysisId,
+  refreshKey,
+}: {
+  analysisId: string;
+  refreshKey: number;
+}) {
+  const avg = React.useMemo(() => {
+    const items = loadPriceHistoryForItem(analysisId);
+    return computeItemAverages(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisId, refreshKey]);
+
+  if (!avg) return null;
+
+  return (
+    <div className="bg-muted/40 border border-border rounded-md px-2.5 py-2 grid grid-cols-3 gap-2 mt-1">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          Média Mín.
+        </span>
+        <span className="text-[11px] font-semibold tabular-nums">
+          {fmtBRL.format(avg.avgMinimo)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          Média Sug.
+        </span>
+        <span className="text-[11px] font-semibold tabular-nums text-primary">
+          {fmtBRL.format(avg.avgSugerido)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          Média Máx.
+        </span>
+        <span className="text-[11px] font-semibold tabular-nums">
+          {fmtBRL.format(avg.avgMaximo)}
+        </span>
+      </div>
+      <span className="col-span-3 text-[10px] text-muted-foreground">
+        {avg.count} {avg.count === 1 ? "estimativa" : "estimativas"}
+      </span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -120,6 +174,15 @@ export function ImageAnalyzer() {
   const [priceModalOpen, setPriceModalOpen] = React.useState(false);
   const [priceModalEntry, setPriceModalEntry] =
     React.useState<AnalysisEntry | null>(null);
+  const [priceRefreshKey, setPriceRefreshKey] = React.useState(0);
+
+  function handlePriceModalChange(open: boolean) {
+    setPriceModalOpen(open);
+    if (!open) {
+      // Força re-render das médias nos cards quando o modal fecha
+      setPriceRefreshKey((k) => k + 1);
+    }
+  }
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -305,7 +368,7 @@ export function ImageAnalyzer() {
   /* ---- render ---- */
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold tracking-tight">
           Catalogação de Moda
@@ -917,31 +980,10 @@ export function ImageAnalyzer() {
                       </div>
                     )}
 
-                    {/* Data da análise e custo no card do histórico */}
-                    <div className="border-border mt-1 flex items-center gap-2 border-t pt-1.5">
-                      <span className="text-muted-foreground text-[10px]">
-                        {new Date(entry.analyzedAt).toLocaleDateString("pt-BR")}
-                      </span>
-                      {entry.usage && (
-                        <>
-                          <span className="text-muted-foreground text-[10px]">
-                            ·
-                          </span>
-                          <span className="text-muted-foreground text-[10px]">
-                            {entry.usage.totalTokenCount.toLocaleString(
-                              "pt-BR"
-                            )}{" "}
-                            tokens
-                          </span>
-                          <span className="text-muted-foreground text-[10px]">
-                            ·
-                          </span>
-                          <span className="text-muted-foreground text-[10px] tabular-nums">
-                            {fmtBRL.format(entry.usage.estimatedCostBRL)}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    <CardPriceAverage
+                      analysisId={entry.id}
+                      refreshKey={priceRefreshKey}
+                    />
 
                     <Button
                       variant="outline"
@@ -966,7 +1008,7 @@ export function ImageAnalyzer() {
       <PriceEstimateModal
         entry={priceModalEntry}
         open={priceModalOpen}
-        onOpenChange={setPriceModalOpen}
+        onOpenChange={handlePriceModalChange}
       />
     </div>
   );

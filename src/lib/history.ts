@@ -1,6 +1,7 @@
-import type { AnalysisEntry } from "@/types/clothing";
+import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
 
 const STORAGE_KEY = "clothing-analysis-history";
+const PRICE_STORAGE_KEY = "price-estimate-history";
 
 /**
  * Carrega o histórico do localStorage, migrando entries antigos que
@@ -38,6 +39,84 @@ export function deleteAnalysis(id: string): void {
 
 export function clearHistory(): void {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Histórico de estimativas de preço                                  */
+/* ------------------------------------------------------------------ */
+
+export function loadPriceHistory(): PriceEstimateEntry[] {
+  try {
+    const raw = localStorage.getItem(PRICE_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as PriceEstimateEntry[];
+  } catch {
+    return [];
+  }
+}
+
+export function savePriceEstimate(entry: PriceEstimateEntry): void {
+  const history = loadPriceHistory();
+  history.unshift(entry);
+  localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(history));
+}
+
+export function deletePriceEstimate(id: string): void {
+  const history = loadPriceHistory().filter((entry) => entry.id !== id);
+  localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(history));
+}
+
+export function clearPriceHistory(): void {
+  localStorage.removeItem(PRICE_STORAGE_KEY);
+}
+
+/**
+ * Retorna apenas as estimativas vinculadas a um item (analysisId).
+ */
+export function loadPriceHistoryForItem(
+  analysisId: string
+): PriceEstimateEntry[] {
+  return loadPriceHistory().filter((e) => e.analysisId === analysisId);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Média de preço de um item                                          */
+/* ------------------------------------------------------------------ */
+
+export interface ItemPriceAverage {
+  count: number;
+  avgMinimo: number;
+  avgSugerido: number;
+  avgMaximo: number;
+}
+
+/**
+ * Calcula a média de precoMinimo, precoSugerido e precoMaximo
+ * de um conjunto de estimativas (normalmente filtradas por item).
+ * Retorna `null` se a lista estiver vazia.
+ */
+export function computeItemAverages(
+  entries: PriceEstimateEntry[]
+): ItemPriceAverage | null {
+  if (entries.length === 0) return null;
+
+  let sumMin = 0;
+  let sumSug = 0;
+  let sumMax = 0;
+
+  for (const e of entries) {
+    sumMin += e.precoMinimo;
+    sumSug += e.precoSugerido;
+    sumMax += e.precoMaximo;
+  }
+
+  const count = entries.length;
+  return {
+    count,
+    avgMinimo: sumMin / count,
+    avgSugerido: sumSug / count,
+    avgMaximo: sumMax / count,
+  };
 }
 
 /**

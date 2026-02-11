@@ -27,3 +27,17 @@ export interface AnalysisEntry extends ClothingAnalysis {
   analyzedAt: string;
   usage?: AnalysisUsage;
 }
+
+export interface PriceEstimateEntry {
+  id: string;
+  analysisId: string;
+  categoria: string;
+  marca: string;
+  qualidade: string;
+  tituloSugerido: string;
+  precoMinimo: number;
+  precoMaximo: number;
+  precoSugerido: number;
+  justificativa: string;
+  estimatedAt: string;
+}
