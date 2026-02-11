@@ -1,6 +1,10 @@
 import * as React from "react";
 import { analyzeClothingImage } from "@/lib/gemini";
-import type { ClothingAnalysis, AnalysisEntry } from "@/types/clothing";
+import type {
+  ClothingAnalysis,
+  AnalysisEntry,
+  AnalysisUsage,
+} from "@/types/clothing";
 import {
   loadHistory,
   saveAnalysis,
@@ -29,12 +33,27 @@ import { HugeiconsIcon } from "@hugeicons/react";
 
 const MAX_IMAGES = 3;
 
+const fmtBRL = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+const fmtUSD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
 const LABELS: Record<keyof ClothingAnalysis, string> = {
+  titulo_sugerido: "Título Sugerido",
+  descricao_sugerida: "Descrição Sugerida",
   categoria: "Categoria",
   cor: "Cor",
   corte_silhueta: "Corte / Silhueta",
   detalhes_estilo: "Detalhes de Estilo",
   estampa: "Estampa",
+  material: "Material",
+  ocasiao: "Ocasião",
+  comprimento: "Comprimento",
+  genero: "Gênero",
 };
 
 /* ------------------------------------------------------------------ */
@@ -80,6 +99,9 @@ function uniqueDetailsValues(entries: AnalysisEntry[]): string[] {
 export function ImageAnalyzer() {
   const [images, setImages] = React.useState<PendingImage[]>([]);
   const [result, setResult] = React.useState<ClothingAnalysis | null>(null);
+  const [resultUsage, setResultUsage] = React.useState<AnalysisUsage | null>(
+    null
+  );
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -184,9 +206,10 @@ export function ImageAnalyzer() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setResultUsage(null);
 
     try {
-      const analysis = await analyzeClothingImage(
+      const { analysis, usage } = await analyzeClothingImage(
         images.map((img) => ({
           base64Data: img.base64,
           mimeType: img.mimeType,
@@ -194,6 +217,7 @@ export function ImageAnalyzer() {
         userDescription
       );
       setResult(analysis);
+      setResultUsage(usage);
 
       // Cria thumbnails reduzidas e salva no histórico
       const thumbnails = await resizeMultipleImages(
@@ -204,6 +228,7 @@ export function ImageAnalyzer() {
         id: crypto.randomUUID(),
         imagePreviews: thumbnails,
         analyzedAt: new Date().toISOString(),
+        usage,
       };
       saveAnalysis(entry);
       setHistory(loadHistory());
@@ -222,6 +247,7 @@ export function ImageAnalyzer() {
   function handleReset() {
     setImages([]);
     setResult(null);
+    setResultUsage(null);
     setError(null);
     setUserDescription("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -279,8 +305,8 @@ export function ImageAnalyzer() {
           Catalogação de Moda
         </h1>
         <p className="text-muted-foreground text-xs">
-          Envie até {MAX_IMAGES} fotos de uma peça (frente, costas, tecido) e a
-          IA irá catalogá-la automaticamente.
+          Envie até {MAX_IMAGES} fotos de uma peça e a IA irá catalogá-la
+          automaticamente.
         </p>
       </div>
 
@@ -487,38 +513,131 @@ export function ImageAnalyzer() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4">
-              {(Object.keys(LABELS) as (keyof ClothingAnalysis)[]).map(
-                (key) => {
-                  const value = result[key];
+              {/* Título e Descrição sugeridos — destaque */}
+              {result.titulo_sugerido && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+                    Título Sugerido
+                  </span>
+                  <span className="text-sm font-semibold">
+                    {result.titulo_sugerido}
+                  </span>
+                </div>
+              )}
+              {result.descricao_sugerida && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+                    Descrição Sugerida
+                  </span>
+                  <p className="text-sm leading-relaxed text-foreground/90">
+                    {result.descricao_sugerida}
+                  </p>
+                </div>
+              )}
 
-                  if (key === "detalhes_estilo" && Array.isArray(value)) {
-                    return (
-                      <div key={key} className="flex flex-col gap-1.5">
-                        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                          {LABELS[key]}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {value.map((item) => (
-                            <Badge key={item} variant="secondary">
-                              {item}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
+              {(result.titulo_sugerido || result.descricao_sugerida) && (
+                <div className="border-border border-t" />
+              )}
 
+              {(
+                Object.keys(LABELS).filter(
+                  (k) => k !== "titulo_sugerido" && k !== "descricao_sugerida"
+                ) as (keyof ClothingAnalysis)[]
+              ).map((key) => {
+                const value = result[key];
+
+                if (key === "detalhes_estilo" && Array.isArray(value)) {
                   return (
-                    <div key={key} className="flex flex-col gap-1">
+                    <div key={key} className="flex flex-col gap-1.5">
                       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
                         {LABELS[key]}
                       </span>
-                      <span className="text-sm capitalize">
-                        {value as string}
-                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {value.map((item) => (
+                          <Badge key={item} variant="secondary">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   );
                 }
+
+                return (
+                  <div key={key} className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+                      {LABELS[key]}
+                    </span>
+                    <span className="text-sm capitalize">
+                      {value as string}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {/* Uso de tokens e custo estimado */}
+              {resultUsage && (
+                <div className="border-border mt-2 border-t pt-3">
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+                    Consumo da análise
+                  </span>
+                  <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        Tokens entrada
+                      </span>
+                      <span className="text-xs font-medium tabular-nums">
+                        {resultUsage.promptTokenCount.toLocaleString("pt-BR")}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        Tokens saída
+                      </span>
+                      <span className="text-xs font-medium tabular-nums">
+                        {resultUsage.candidatesTokenCount.toLocaleString(
+                          "pt-BR"
+                        )}
+                      </span>
+                    </div>
+                    {resultUsage.thoughtsTokenCount > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px]">
+                          Tokens thinking
+                        </span>
+                        <span className="text-xs font-medium tabular-nums">
+                          {resultUsage.thoughtsTokenCount.toLocaleString(
+                            "pt-BR"
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        Total tokens
+                      </span>
+                      <span className="text-xs font-medium tabular-nums">
+                        {resultUsage.totalTokenCount.toLocaleString("pt-BR")}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        Custo estimado
+                      </span>
+                      <span className="text-xs font-medium tabular-nums">
+                        {fmtBRL.format(resultUsage.estimatedCostBRL)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        Custo USD
+                      </span>
+                      <span className="text-xs font-medium tabular-nums">
+                        {fmtUSD.format(resultUsage.estimatedCostUSD)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </CardContent>
@@ -688,38 +807,94 @@ export function ImageAnalyzer() {
                     </Button>
                   </div>
                   <CardContent className="flex flex-col gap-2 pt-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium capitalize">
+                    {/* Título sugerido */}
+                    {entry.titulo_sugerido && (
+                      <span className="text-sm font-semibold leading-snug">
+                        {entry.titulo_sugerido}
+                      </span>
+                    )}
+
+                    {/* Categoria */}
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                        Categoria
+                      </span>
+                      <span className="text-xs capitalize">
                         {entry.categoria}
                       </span>
-                      <span className="text-muted-foreground text-[10px]">
-                        {new Date(entry.analyzedAt).toLocaleDateString("pt-BR")}
-                      </span>
                     </div>
+                    {entry.descricao_sugerida && (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Descrição
+                        </span>
+                        <p className="text-xs leading-relaxed text-foreground/80 line-clamp-3">
+                          {entry.descricao_sugerida}
+                        </p>
+                      </div>
+                    )}
 
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                        Cor
-                      </span>
-                      <span className="text-xs capitalize">{entry.cor}</span>
-                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Cor
+                        </span>
+                        <span className="text-xs capitalize">{entry.cor}</span>
+                      </div>
 
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                        Corte / Silhueta
-                      </span>
-                      <span className="text-xs capitalize">
-                        {entry.corte_silhueta}
-                      </span>
-                    </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Corte / Silhueta
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.corte_silhueta}
+                        </span>
+                      </div>
 
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                        Estampa
-                      </span>
-                      <span className="text-xs capitalize">
-                        {entry.estampa}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Estampa
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.estampa}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Material
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.material || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Ocasião
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.ocasiao || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Comprimento
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.comprimento || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Gênero
+                        </span>
+                        <span className="text-xs capitalize">
+                          {entry.genero || "—"}
+                        </span>
+                      </div>
                     </div>
 
                     {entry.detalhes_estilo.length > 0 && (
@@ -735,6 +910,32 @@ export function ImageAnalyzer() {
                         ))}
                       </div>
                     )}
+
+                    {/* Data da análise e custo no card do histórico */}
+                    <div className="border-border mt-1 flex items-center gap-2 border-t pt-1.5">
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(entry.analyzedAt).toLocaleDateString("pt-BR")}
+                      </span>
+                      {entry.usage && (
+                        <>
+                          <span className="text-muted-foreground text-[10px]">
+                            ·
+                          </span>
+                          <span className="text-muted-foreground text-[10px]">
+                            {entry.usage.totalTokenCount.toLocaleString(
+                              "pt-BR"
+                            )}{" "}
+                            tokens
+                          </span>
+                          <span className="text-muted-foreground text-[10px]">
+                            ·
+                          </span>
+                          <span className="text-muted-foreground text-[10px] tabular-nums">
+                            {fmtBRL.format(entry.usage.estimatedCostBRL)}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
