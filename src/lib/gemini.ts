@@ -5,7 +5,7 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-const BASE_PROMPT = `Você é um especialista em catalogação de moda. Analise a imagem e retorne APENAS um JSON seguindo estas regras:
+const BASE_PROMPT = `Você é um especialista em catalogação de moda. Analise as imagens fornecidas da peça de roupa (podem ser fotos da frente, costas e zoom no tecido) e retorne APENAS um JSON seguindo estas regras:
 
 categoria: (ex: vestido, camiseta, calça, body, saia, shorts, blazer, jaqueta, etc.).
 
@@ -16,6 +16,8 @@ corte_silhueta: Se for vestido, escolha um valor: [tubinho, evasê, sereia, enve
 detalhes_estilo: Se for vestido, retorne uma lista com os atributos aplicáveis: [tomara que caia, frente única, com alças, manga longa, fenda, babados, plissado, outro]. Para outras peças, liste os detalhes de estilo visíveis.
 
 estampa: (ex: bolinhas, liso, floral, listrado, xadrez).
+
+IMPORTANTE: Considere TODAS as imagens enviadas em conjunto para fazer uma análise mais completa e precisa da peça.
 
 FORMATO DE SAÍDA:
 {
@@ -37,26 +39,24 @@ Leve essa descrição em consideração junto com a imagem para classificar corr
 }
 
 export async function analyzeClothingImage(
-  base64Data: string,
-  mimeType: string,
+  images: { base64Data: string; mimeType: string }[],
   userDescription?: string
 ): Promise<ClothingAnalysis> {
   const prompt = buildPrompt(userDescription);
+
+  const imageParts = images.map((img) => ({
+    inlineData: {
+      data: img.base64Data,
+      mimeType: img.mimeType,
+    },
+  }));
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
       {
         role: "user",
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType,
-            },
-          },
-        ],
+        parts: [{ text: prompt }, ...imageParts],
       },
     ],
     config: {

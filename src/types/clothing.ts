@@ -8,6 +8,6 @@ export interface ClothingAnalysis {
 
 export interface AnalysisEntry extends ClothingAnalysis {
   id: string;
-  imagePreview: string;
+  imagePreviews: string[];
   analyzedAt: string;
 }

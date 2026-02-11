@@ -6,7 +6,7 @@ import {
   saveAnalysis,
   deleteAnalysis,
   clearHistory,
-  resizeImageDataUrl,
+  resizeMultipleImages,
 } from "@/lib/history";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 import { Delete01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+
+const MAX_IMAGES = 3;
 
 const LABELS: Record<keyof ClothingAnalysis, string> = {
   categoria: "Categoria",
@@ -27,6 +36,16 @@ const LABELS: Record<keyof ClothingAnalysis, string> = {
   detalhes_estilo: "Detalhes de Estilo",
   estampa: "Estampa",
 };
+
+/* ------------------------------------------------------------------ */
+/*  Tipo interno para imagens pendentes de análise                     */
+/* ------------------------------------------------------------------ */
+
+interface PendingImage {
+  preview: string; // data-URL completa
+  base64: string; // parte base64 (sem prefixo)
+  mimeType: string;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers para extrair opções únicas do histórico                    */
@@ -59,10 +78,7 @@ function uniqueDetailsValues(entries: AnalysisEntry[]): string[] {
 /* ------------------------------------------------------------------ */
 
 export function ImageAnalyzer() {
-  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
-  const [imageBase64, setImageBase64] = React.useState<string | null>(null);
-  const [imageMimeType, setImageMimeType] =
-    React.useState<string>("image/jpeg");
+  const [images, setImages] = React.useState<PendingImage[]>([]);
   const [result, setResult] = React.useState<ClothingAnalysis | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -86,7 +102,7 @@ export function ImageAnalyzer() {
 
   /* ---- upload helpers ---- */
 
-  function processFile(file: File) {
+  function addFile(file: File) {
     if (!file.type.startsWith("image/")) {
       setError("Por favor, selecione um arquivo de imagem.");
       return;
@@ -94,28 +110,42 @@ export function ImageAnalyzer() {
 
     setError(null);
     setResult(null);
-    setImageMimeType(file.type);
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
-      setImagePreview(dataUrl);
       const base64 = dataUrl.split(",")[1];
-      setImageBase64(base64);
+      setImages((prev) => {
+        if (prev.length >= MAX_IMAGES) return prev;
+        return [...prev, { preview: dataUrl, base64, mimeType: file.type }];
+      });
     };
     reader.readAsDataURL(file);
   }
 
+  function addFiles(files: FileList | File[]) {
+    const arr = Array.from(files);
+    for (const file of arr) {
+      addFile(file);
+    }
+  }
+
+  function removeImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+    const files = e.target.files;
+    if (files) addFiles(files);
+    // Reseta o input para permitir re-selecionar o mesmo arquivo
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    const files = e.dataTransfer.files;
+    if (files) addFiles(files);
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -136,7 +166,7 @@ export function ImageAnalyzer() {
       for (const item of items) {
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
-          if (file) processFile(file);
+          if (file) addFile(file);
           break;
         }
       }
@@ -149,7 +179,7 @@ export function ImageAnalyzer() {
   /* ---- análise ---- */
 
   async function handleAnalyze() {
-    if (!imageBase64 || !imagePreview) return;
+    if (images.length === 0) return;
 
     setLoading(true);
     setError(null);
@@ -157,18 +187,22 @@ export function ImageAnalyzer() {
 
     try {
       const analysis = await analyzeClothingImage(
-        imageBase64,
-        imageMimeType,
+        images.map((img) => ({
+          base64Data: img.base64,
+          mimeType: img.mimeType,
+        })),
         userDescription
       );
       setResult(analysis);
 
-      // Cria thumbnail reduzida e salva no histórico
-      const thumbnail = await resizeImageDataUrl(imagePreview);
+      // Cria thumbnails reduzidas e salva no histórico
+      const thumbnails = await resizeMultipleImages(
+        images.map((img) => img.preview)
+      );
       const entry: AnalysisEntry = {
         ...analysis,
         id: crypto.randomUUID(),
-        imagePreview: thumbnail,
+        imagePreviews: thumbnails,
         analyzedAt: new Date().toISOString(),
       };
       saveAnalysis(entry);
@@ -186,8 +220,7 @@ export function ImageAnalyzer() {
   }
 
   function handleReset() {
-    setImagePreview(null);
-    setImageBase64(null);
+    setImages([]);
     setResult(null);
     setError(null);
     setUserDescription("");
@@ -235,6 +268,7 @@ export function ImageAnalyzer() {
   );
 
   const hasActiveFilters = filterCategoria || filterCorte || filterDetalhe;
+  const canAddMore = images.length < MAX_IMAGES;
 
   /* ---- render ---- */
 
@@ -245,8 +279,8 @@ export function ImageAnalyzer() {
           Catalogação de Moda
         </h1>
         <p className="text-muted-foreground text-xs">
-          Envie uma foto de uma peça de roupa e a IA irá catalogá-la
-          automaticamente.
+          Envie até {MAX_IMAGES} fotos de uma peça (frente, costas, tecido) e a
+          IA irá catalogá-la automaticamente.
         </p>
       </div>
 
@@ -257,12 +291,14 @@ export function ImageAnalyzer() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileChange}
             className="hidden"
             id="image-upload"
           />
 
-          {!imagePreview ? (
+          {images.length === 0 ? (
+            /* Área de drop vazia */
             <label
               htmlFor="image-upload"
               onDrop={handleDrop}
@@ -292,22 +328,85 @@ export function ImageAnalyzer() {
               </svg>
               <div className="flex flex-col items-center gap-1 text-center">
                 <span className="text-xs font-medium">
-                  Arraste uma imagem ou clique para selecionar
+                  Arraste imagens ou clique para selecionar
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  Você também pode colar uma imagem (Ctrl+V)
+                  Até {MAX_IMAGES} fotos — Você também pode colar (Ctrl+V)
                 </span>
               </div>
             </label>
           ) : (
+            /* Preview das imagens selecionadas */
             <div className="flex flex-col gap-4">
-              <div className="relative overflow-hidden border border-border">
-                <img
-                  src={imagePreview}
-                  alt="Preview da imagem"
-                  className="max-h-96 w-full object-contain"
-                />
+              <div
+                className="grid gap-3"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(
+                    images.length + (canAddMore ? 1 : 0),
+                    MAX_IMAGES
+                  )}, minmax(0, 1fr))`,
+                }}
+              >
+                {images.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-muted relative overflow-hidden border border-border"
+                  >
+                    <img
+                      src={img.preview}
+                      alt={`Foto ${idx + 1}`}
+                      className="h-48 w-full object-contain"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => removeImage(idx)}
+                      className="absolute right-1.5 top-1.5 bg-background/80 backdrop-blur-sm cursor-pointer hover:bg-background"
+                      title="Remover foto"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete01Icon}
+                        className="h-3.5 w-3.5"
+                      />
+                    </Button>
+                  </div>
+                ))}
+
+                {/* Slot para adicionar mais fotos */}
+                {canAddMore && (
+                  <label
+                    htmlFor="image-upload"
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={`flex h-48 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    }`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-muted-foreground"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span className="text-muted-foreground text-[10px] font-medium">
+                      Adicionar
+                    </span>
+                  </label>
+                )}
               </div>
+
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="user-description"
@@ -326,19 +425,25 @@ export function ImageAnalyzer() {
                 />
                 <span className="text-muted-foreground/60 text-[10px]">
                   Ajuda a IA a classificar melhor a peça combinando sua
-                  descrição com a imagem.
+                  descrição com as imagens.
                 </span>
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleAnalyze} disabled={loading}>
-                  {loading ? "Analisando..." : "Analisar Imagem"}
+                  {loading
+                    ? "Analisando..."
+                    : `Analisar ${
+                        images.length === 1
+                          ? "Imagem"
+                          : `${images.length} Imagens`
+                      }`}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleReset}
                   disabled={loading}
                 >
-                  Remover Imagem
+                  Remover Tudo
                 </Button>
               </div>
             </div>
@@ -353,7 +458,9 @@ export function ImageAnalyzer() {
             <div className="flex items-center gap-3 py-4">
               <div className="border-primary h-4 w-4 animate-spin border-2 border-t-transparent" />
               <span className="text-muted-foreground text-xs">
-                Analisando imagem com Gemini...
+                Analisando{" "}
+                {images.length === 1 ? "imagem" : `${images.length} imagens`}{" "}
+                com Gemini...
               </span>
             </div>
           </CardContent>
@@ -543,17 +650,38 @@ export function ImageAnalyzer() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredHistory.map((entry) => (
                 <Card key={entry.id} className="group relative overflow-hidden">
-                  <div className="bg-muted relative flex items-center justify-center">
-                    <img
-                      src={entry.imagePreview}
-                      alt="Thumbnail"
-                      className="h-40 w-full object-contain"
-                    />
+                  {/* Imagens — carousel se houver mais de 1 */}
+                  <div className="bg-muted relative">
+                    {entry.imagePreviews.length > 1 ? (
+                      <Carousel className="w-full">
+                        <CarouselContent className="ml-0">
+                          {entry.imagePreviews.map((src, idx) => (
+                            <CarouselItem key={idx} className="pl-0">
+                              <div className="flex items-center justify-center">
+                                <img
+                                  src={src}
+                                  alt={`Foto ${idx + 1}`}
+                                  className="h-40 w-full object-contain"
+                                />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                        <CarouselPrevious className="left-1.5 h-6 w-6" />
+                        <CarouselNext className="right-1.5 h-6 w-6" />
+                      </Carousel>
+                    ) : (
+                      <img
+                        src={entry.imagePreviews[0]}
+                        alt="Thumbnail"
+                        className="h-40 w-full object-contain"
+                      />
+                    )}
                     <Button
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => handleDeleteEntry(entry.id)}
-                      className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                      className="absolute right-1.5 top-1.5 z-10 opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
                       title="Remover análise"
                     >
                       <HugeiconsIcon icon={Delete01Icon} className="h-4 w-4" />

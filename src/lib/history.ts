@@ -2,11 +2,24 @@ import type { AnalysisEntry } from "@/types/clothing";
 
 const STORAGE_KEY = "clothing-analysis-history";
 
+/**
+ * Carrega o histórico do localStorage, migrando entries antigos que
+ * possuem `imagePreview` (string) para o novo formato `imagePreviews` (string[]).
+ */
 export function loadHistory(): AnalysisEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as AnalysisEntry[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed = JSON.parse(raw) as any[];
+    return parsed.map((entry) => {
+      // Migração: campo antigo imagePreview -> imagePreviews
+      if (typeof entry.imagePreview === "string" && !entry.imagePreviews) {
+        const { imagePreview, ...rest } = entry;
+        return { ...rest, imagePreviews: [imagePreview] } as AnalysisEntry;
+      }
+      return entry as AnalysisEntry;
+    });
   } catch {
     return [];
   }
@@ -49,4 +62,14 @@ export function resizeImageDataUrl(
     };
     img.src = dataUrl;
   });
+}
+
+/**
+ * Redimensiona múltiplas imagens data-URL em paralelo.
+ */
+export function resizeMultipleImages(
+  dataUrls: string[],
+  maxSize = 200
+): Promise<string[]> {
+  return Promise.all(dataUrls.map((url) => resizeImageDataUrl(url, maxSize)));
 }
