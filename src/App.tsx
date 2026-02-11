@@ -1,7 +1,7 @@
-import { ComponentExample } from "@/components/component-example";
+import { ImageAnalyzer } from "@/components/image-analyzer";
 
 export function App() {
-return <ComponentExample />;
+  return <ImageAnalyzer />;
 }
 
 export default App;
