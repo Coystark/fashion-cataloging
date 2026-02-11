@@ -1,5 +1,6 @@
 import * as React from "react";
-import { analyzeClothingImage } from "@/lib/gemini";
+import { analyzeClothingImage } from "@/lib/gemini-analysis";
+import { PriceEstimateModal } from "@/components/price-estimate-modal";
 import type {
   ClothingAnalysis,
   AnalysisEntry,
@@ -114,6 +115,11 @@ export function ImageAnalyzer() {
   const [filterCategoria, setFilterCategoria] = React.useState("");
   const [filterCorte, setFilterCorte] = React.useState("");
   const [filterDetalhe, setFilterDetalhe] = React.useState("");
+
+  // Modal de estimativa de preço
+  const [priceModalOpen, setPriceModalOpen] = React.useState(false);
+  const [priceModalEntry, setPriceModalEntry] =
+    React.useState<AnalysisEntry | null>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -936,6 +942,18 @@ export function ImageAnalyzer() {
                         </>
                       )}
                     </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-1 cursor-pointer"
+                      onClick={() => {
+                        setPriceModalEntry(entry);
+                        setPriceModalOpen(true);
+                      }}
+                    >
+                      Analisar Preço
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -943,6 +961,13 @@ export function ImageAnalyzer() {
           )}
         </>
       )}
+
+      {/* Modal de estimativa de preço */}
+      <PriceEstimateModal
+        entry={priceModalEntry}
+        open={priceModalOpen}
+        onOpenChange={setPriceModalOpen}
+      />
     </div>
   );
 }
