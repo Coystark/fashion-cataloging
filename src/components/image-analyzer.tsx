@@ -1,6 +1,7 @@
 import * as React from "react";
 import { analyzeClothingImage } from "@/lib/gemini-analysis";
 import { PriceEstimateModal } from "@/components/price-estimate-modal";
+import { TryOnModal } from "@/components/tryon-modal";
 import type {
   ClothingAnalysis,
   AnalysisEntry,
@@ -177,6 +178,11 @@ export function ImageAnalyzer() {
   const [priceModalEntry, setPriceModalEntry] =
     React.useState<AnalysisEntry | null>(null);
   const [priceRefreshKey, setPriceRefreshKey] = React.useState(0);
+
+  // Modal de Virtual Try-On
+  const [tryOnModalOpen, setTryOnModalOpen] = React.useState(false);
+  const [tryOnModalEntry, setTryOnModalEntry] =
+    React.useState<AnalysisEntry | null>(null);
 
   function handlePriceModalChange(open: boolean) {
     setPriceModalOpen(open);
@@ -1014,6 +1020,17 @@ export function ImageAnalyzer() {
                     >
                       Analisar Preço
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full cursor-pointer"
+                      onClick={() => {
+                        setTryOnModalEntry(entry);
+                        setTryOnModalOpen(true);
+                      }}
+                    >
+                      Try On
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -1027,6 +1044,13 @@ export function ImageAnalyzer() {
         entry={priceModalEntry}
         open={priceModalOpen}
         onOpenChange={handlePriceModalChange}
+      />
+
+      {/* Modal de Virtual Try-On */}
+      <TryOnModal
+        entry={tryOnModalEntry}
+        open={tryOnModalOpen}
+        onOpenChange={setTryOnModalOpen}
       />
     </div>
   );
