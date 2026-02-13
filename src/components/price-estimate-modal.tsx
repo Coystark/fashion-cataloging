@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
+import { Condition } from "@/types/clothing";
 import { estimatePrice, type PriceEstimate } from "@/lib/gemini-pricing";
-import { CONDICOES } from "@/lib/gemini-analysis";
 import {
   loadPriceHistoryForItem,
   savePriceEstimate,
@@ -34,6 +34,8 @@ const fmtBRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+const CONDITION_OPTIONS = Object.values(Condition);
 
 interface PriceEstimateModalProps {
   entry: AnalysisEntry | null;
@@ -74,8 +76,8 @@ export function PriceEstimateModal({
     if (open) {
       refreshHistory();
       // Auto-preenche com dados da análise (se disponíveis)
-      setQualidade(entry?.condicao || "");
-      setMarca(entry?.marca || "");
+      setQualidade(entry?.condition || "");
+      setMarca("");
     } else {
       setQualidade("");
       setMarca("");
@@ -107,10 +109,10 @@ export function PriceEstimateModal({
       const priceEntry: PriceEstimateEntry = {
         id: crypto.randomUUID(),
         analysisId: entry.id,
-        categoria: entry.categoria,
+        category: entry.categories.main,
         marca: marca.trim(),
         qualidade: qualidade.trim(),
-        tituloSugerido: entry.titulo_sugerido,
+        suggestedTitle: entry.suggestedTitle,
         precoMinimo: estimate.precoMinimo,
         precoMaximo: estimate.precoMaximo,
         precoSugerido: estimate.precoSugerido,
@@ -145,7 +147,7 @@ export function PriceEstimateModal({
           <AlertDialogTitle>Estimar Preço</AlertDialogTitle>
           <AlertDialogDescription>
             {entry
-              ? `Informe a qualidade e marca para estimar o preço de "${entry.titulo_sugerido}".`
+              ? `Informe a qualidade e marca para estimar o preço de "${entry.suggestedTitle}".`
               : "Informe a qualidade e marca da peça."}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -165,7 +167,7 @@ export function PriceEstimateModal({
                 <SelectValue placeholder="Selecione a condição" />
               </SelectTrigger>
               <SelectContent>
-                {CONDICOES.map((c) => (
+                {CONDITION_OPTIONS.map((c) => (
                   <SelectItem key={c} value={c} className="capitalize">
                     {c}
                   </SelectItem>

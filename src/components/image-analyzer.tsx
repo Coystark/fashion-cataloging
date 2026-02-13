@@ -3,7 +3,7 @@ import { analyzeClothingImage } from "@/lib/gemini-analysis";
 import { PriceEstimateModal } from "@/components/price-estimate-modal";
 import { TryOnModal } from "@/components/tryon-modal";
 import type {
-  ClothingAnalysis,
+  GarmentClassification,
   AnalysisEntry,
   AnalysisUsage,
 } from "@/types/clothing";
@@ -46,22 +46,6 @@ const fmtUSD = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-const LABELS: Record<keyof ClothingAnalysis, string> = {
-  titulo_sugerido: "Título Sugerido",
-  descricao_sugerida: "Descrição Sugerida",
-  categoria: "Categoria",
-  cor: "Cor",
-  corte_silhueta: "Corte / Silhueta",
-  detalhes_estilo: "Detalhes de Estilo",
-  estampa: "Estampa",
-  material: "Material",
-  ocasiao: "Ocasião",
-  comprimento: "Comprimento",
-  genero: "Gênero",
-  condicao: "Condição",
-  marca: "Marca",
-};
-
 /* ------------------------------------------------------------------ */
 /*  Tipo interno para imagens pendentes de análise                     */
 /* ------------------------------------------------------------------ */
@@ -76,26 +60,49 @@ interface PendingImage {
 /*  Helpers para extrair opções únicas do histórico                    */
 /* ------------------------------------------------------------------ */
 
-function uniqueValues(
-  entries: AnalysisEntry[],
-  key: "categoria" | "corte_silhueta"
-): string[] {
+function uniqueMainCategories(entries: AnalysisEntry[]): string[] {
   const set = new Set<string>();
   for (const e of entries) {
-    const v = e[key];
-    if (v) set.add(v.toLowerCase());
+    if (e.categories?.main) set.add(e.categories.main.toLowerCase());
   }
   return Array.from(set).sort();
 }
 
-function uniqueDetailsValues(entries: AnalysisEntry[]): string[] {
+function uniqueShapes(entries: AnalysisEntry[]): string[] {
   const set = new Set<string>();
   for (const e of entries) {
-    for (const d of e.detalhes_estilo) {
-      if (d) set.add(d.toLowerCase());
+    for (const s of e.shape ?? []) {
+      if (s) set.add(s.toLowerCase());
     }
   }
   return Array.from(set).sort();
+}
+
+function uniqueAesthetics(entries: AnalysisEntry[]): string[] {
+  const set = new Set<string>();
+  for (const e of entries) {
+    for (const a of e.aesthetics ?? []) {
+      if (a) set.add(a.toLowerCase());
+    }
+  }
+  return Array.from(set).sort();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helper: renderiza valor(es) como badges                            */
+/* ------------------------------------------------------------------ */
+
+function BadgeList({ items }: { items: string[] }) {
+  if (!items || items.length === 0) return <span className="text-xs">—</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {items.map((item) => (
+        <Badge key={item} variant="secondary" className="text-[10px]">
+          {item}
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -151,12 +158,171 @@ function CardPriceAverage({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Helper: renderiza um campo de resultado da análise                  */
+/* ------------------------------------------------------------------ */
+
+function ResultField({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+        {label}
+      </span>
+      <div className="text-sm capitalize">{value || "—"}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Componente para exibir resultado completo da análise                */
+/* ------------------------------------------------------------------ */
+
+function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Título e Descrição sugeridos — destaque */}
+      {result.suggestedTitle && (
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+            Título Sugerido
+          </span>
+          <span className="text-sm font-semibold">{result.suggestedTitle}</span>
+        </div>
+      )}
+      {result.suggestedDescription && (
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+            Descrição Sugerida
+          </span>
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {result.suggestedDescription}
+          </p>
+        </div>
+      )}
+
+      {(result.suggestedTitle || result.suggestedDescription) && (
+        <div className="border-border border-t" />
+      )}
+
+      {/* Categorias */}
+      <ResultField label="Categoria Principal" value={result.categories.main} />
+      <ResultField
+        label="Departamento"
+        value={<BadgeList items={result.categories.department} />}
+      />
+      <ResultField
+        label="Subcategorias"
+        value={<BadgeList items={result.categories.sub} />}
+      />
+
+      <div className="border-border border-t" />
+
+      {/* Cor */}
+      <ResultField label="Cor Principal" value={result.color.primary} />
+      {result.color.secondary.length > 0 && (
+        <ResultField
+          label="Cores Secundárias"
+          value={<BadgeList items={result.color.secondary} />}
+        />
+      )}
+      <ResultField
+        label="Estampa"
+        value={<BadgeList items={result.color.pattern} />}
+      />
+      <ResultField
+        label="Multicolorido"
+        value={result.color.is_multicolor ? "Sim" : "Não"}
+      />
+
+      <div className="border-border border-t" />
+
+      {/* Modelagem */}
+      <ResultField
+        label="Silhueta"
+        value={<BadgeList items={result.shape} />}
+      />
+      <ResultField
+        label="Caimento (Fit)"
+        value={<BadgeList items={result.fit} />}
+      />
+      <ResultField label="Comprimento" value={result.length} />
+      <ResultField label="Condição" value={result.condition} />
+
+      <div className="border-border border-t" />
+
+      {/* Manga */}
+      <ResultField label="Manga — Comprimento" value={result.sleeve.length} />
+      <ResultField
+        label="Manga — Tipo"
+        value={<BadgeList items={result.sleeve.type} />}
+      />
+      <ResultField
+        label="Manga — Construção"
+        value={result.sleeve.construction}
+      />
+
+      <div className="border-border border-t" />
+
+      {/* Decote e Costas */}
+      <ResultField label="Decote" value={result.neckline} />
+      <ResultField
+        label="Detalhes Costas"
+        value={<BadgeList items={result.backDetails} />}
+      />
+
+      <div className="border-border border-t" />
+
+      {/* Acabamento e Fechamento */}
+      <ResultField
+        label="Acabamento"
+        value={<BadgeList items={result.finish} />}
+      />
+      <ResultField
+        label="Fechamento"
+        value={<BadgeList items={result.closure} />}
+      />
+
+      {/* Bolsos */}
+      <ResultField
+        label="Bolsos"
+        value={
+          result.pockets.has_pockets
+            ? `Sim (${result.pockets.quantity}) — ${
+                result.pockets.types.join(", ") || "—"
+              }`
+            : "Não"
+        }
+      />
+
+      <div className="border-border border-t" />
+
+      {/* Estética e Ocasião */}
+      <ResultField
+        label="Estética"
+        value={<BadgeList items={result.aesthetics} />}
+      />
+      <ResultField
+        label="Ocasião"
+        value={<BadgeList items={result.occasion} />}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export function ImageAnalyzer() {
   const [images, setImages] = React.useState<PendingImage[]>([]);
-  const [result, setResult] = React.useState<ClothingAnalysis | null>(null);
+  const [result, setResult] = React.useState<GarmentClassification | null>(
+    null
+  );
   const [resultUsage, setResultUsage] = React.useState<AnalysisUsage | null>(
     null
   );
@@ -169,9 +335,9 @@ export function ImageAnalyzer() {
   const [history, setHistory] = React.useState<AnalysisEntry[]>([]);
 
   // Filtros
-  const [filterCategoria, setFilterCategoria] = React.useState("");
-  const [filterCorte, setFilterCorte] = React.useState("");
-  const [filterDetalhe, setFilterDetalhe] = React.useState("");
+  const [filterCategory, setFilterCategory] = React.useState("");
+  const [filterShape, setFilterShape] = React.useState("");
+  const [filterAesthetic, setFilterAesthetic] = React.useState("");
 
   // Modal de estimativa de preço
   const [priceModalOpen, setPriceModalOpen] = React.useState(false);
@@ -344,33 +510,38 @@ export function ImageAnalyzer() {
 
   const filteredHistory = React.useMemo(() => {
     return history.filter((entry) => {
-      if (filterCategoria && entry.categoria.toLowerCase() !== filterCategoria)
-        return false;
-      if (filterCorte && entry.corte_silhueta.toLowerCase() !== filterCorte)
+      if (
+        filterCategory &&
+        entry.categories?.main?.toLowerCase() !== filterCategory
+      )
         return false;
       if (
-        filterDetalhe &&
-        !entry.detalhes_estilo.some((d) => d.toLowerCase() === filterDetalhe)
+        filterShape &&
+        !(entry.shape ?? []).some((s) => s.toLowerCase() === filterShape)
+      )
+        return false;
+      if (
+        filterAesthetic &&
+        !(entry.aesthetics ?? []).some(
+          (a) => a.toLowerCase() === filterAesthetic
+        )
       )
         return false;
       return true;
     });
-  }, [history, filterCategoria, filterCorte, filterDetalhe]);
+  }, [history, filterCategory, filterShape, filterAesthetic]);
 
-  const categoriaOptions = React.useMemo(
-    () => uniqueValues(history, "categoria"),
+  const categoryOptions = React.useMemo(
+    () => uniqueMainCategories(history),
     [history]
   );
-  const corteOptions = React.useMemo(
-    () => uniqueValues(history, "corte_silhueta"),
-    [history]
-  );
-  const detalheOptions = React.useMemo(
-    () => uniqueDetailsValues(history),
+  const shapeOptions = React.useMemo(() => uniqueShapes(history), [history]);
+  const aestheticOptions = React.useMemo(
+    () => uniqueAesthetics(history),
     [history]
   );
 
-  const hasActiveFilters = filterCategoria || filterCorte || filterDetalhe;
+  const hasActiveFilters = filterCategory || filterShape || filterAesthetic;
   const canAddMore = images.length < MAX_IMAGES;
 
   /* ---- render ---- */
@@ -589,132 +760,68 @@ export function ImageAnalyzer() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col gap-4">
-              {/* Título e Descrição sugeridos — destaque */}
-              {result.titulo_sugerido && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                    Título Sugerido
-                  </span>
-                  <span className="text-sm font-semibold">
-                    {result.titulo_sugerido}
-                  </span>
-                </div>
-              )}
-              {result.descricao_sugerida && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                    Descrição Sugerida
-                  </span>
-                  <p className="text-sm leading-relaxed text-foreground/90">
-                    {result.descricao_sugerida}
-                  </p>
-                </div>
-              )}
+            <AnalysisResultDisplay result={result} />
 
-              {(result.titulo_sugerido || result.descricao_sugerida) && (
-                <div className="border-border border-t" />
-              )}
-
-              {(
-                Object.keys(LABELS).filter(
-                  (k) => k !== "titulo_sugerido" && k !== "descricao_sugerida"
-                ) as (keyof ClothingAnalysis)[]
-              ).map((key) => {
-                const value = result[key];
-
-                if (key === "detalhes_estilo" && Array.isArray(value)) {
-                  return (
-                    <div key={key} className="flex flex-col gap-1.5">
-                      <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                        {LABELS[key]}
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {value.map((item) => (
-                          <Badge key={item} variant="secondary">
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                      {LABELS[key]}
+            {/* Uso de tokens e custo estimado */}
+            {resultUsage && (
+              <div className="border-border mt-4 border-t pt-3">
+                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+                  Consumo da análise
+                </span>
+                <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-[10px]">
+                      Tokens entrada
                     </span>
-                    <span className="text-sm capitalize">{value || "-"}</span>
+                    <span className="text-xs font-medium tabular-nums">
+                      {resultUsage.promptTokenCount.toLocaleString("pt-BR")}
+                    </span>
                   </div>
-                );
-              })}
-
-              {/* Uso de tokens e custo estimado */}
-              {resultUsage && (
-                <div className="border-border mt-2 border-t pt-3">
-                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                    Consumo da análise
-                  </span>
-                  <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-[10px]">
+                      Tokens saída
+                    </span>
+                    <span className="text-xs font-medium tabular-nums">
+                      {resultUsage.candidatesTokenCount.toLocaleString("pt-BR")}
+                    </span>
+                  </div>
+                  {resultUsage.thoughtsTokenCount > 0 && (
                     <div className="flex flex-col gap-0.5">
                       <span className="text-muted-foreground text-[10px]">
-                        Tokens entrada
+                        Tokens thinking
                       </span>
                       <span className="text-xs font-medium tabular-nums">
-                        {resultUsage.promptTokenCount.toLocaleString("pt-BR")}
+                        {resultUsage.thoughtsTokenCount.toLocaleString("pt-BR")}
                       </span>
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-muted-foreground text-[10px]">
-                        Tokens saída
-                      </span>
-                      <span className="text-xs font-medium tabular-nums">
-                        {resultUsage.candidatesTokenCount.toLocaleString(
-                          "pt-BR"
-                        )}
-                      </span>
-                    </div>
-                    {resultUsage.thoughtsTokenCount > 0 && (
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-muted-foreground text-[10px]">
-                          Tokens thinking
-                        </span>
-                        <span className="text-xs font-medium tabular-nums">
-                          {resultUsage.thoughtsTokenCount.toLocaleString(
-                            "pt-BR"
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-muted-foreground text-[10px]">
-                        Total tokens
-                      </span>
-                      <span className="text-xs font-medium tabular-nums">
-                        {resultUsage.totalTokenCount.toLocaleString("pt-BR")}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-muted-foreground text-[10px]">
-                        Custo estimado
-                      </span>
-                      <span className="text-xs font-medium tabular-nums">
-                        {fmtBRL.format(resultUsage.estimatedCostBRL)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-muted-foreground text-[10px]">
-                        Custo USD
-                      </span>
-                      <span className="text-xs font-medium tabular-nums">
-                        {fmtUSD.format(resultUsage.estimatedCostUSD)}
-                      </span>
-                    </div>
+                  )}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-[10px]">
+                      Total tokens
+                    </span>
+                    <span className="text-xs font-medium tabular-nums">
+                      {resultUsage.totalTokenCount.toLocaleString("pt-BR")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-[10px]">
+                      Custo estimado
+                    </span>
+                    <span className="text-xs font-medium tabular-nums">
+                      {fmtBRL.format(resultUsage.estimatedCostBRL)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-[10px]">
+                      Custo USD
+                    </span>
+                    <span className="text-xs font-medium tabular-nums">
+                      {fmtUSD.format(resultUsage.estimatedCostUSD)}
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -747,22 +854,22 @@ export function ImageAnalyzer() {
           <Card>
             <CardContent>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {/* Categoria */}
+                {/* Categoria Principal */}
                 <div className="flex flex-col gap-1.5">
                   <label
-                    htmlFor="filter-categoria"
+                    htmlFor="filter-category"
                     className="text-muted-foreground text-xs font-medium uppercase tracking-wider"
                   >
                     Categoria
                   </label>
                   <select
-                    id="filter-categoria"
-                    value={filterCategoria}
-                    onChange={(e) => setFilterCategoria(e.target.value)}
+                    id="filter-category"
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
                     className="border-input bg-background text-foreground h-9 rounded-md border px-3 text-sm"
                   >
                     <option value="">Todas</option>
-                    {categoriaOptions.map((v) => (
+                    {categoryOptions.map((v) => (
                       <option key={v} value={v}>
                         {v}
                       </option>
@@ -770,22 +877,22 @@ export function ImageAnalyzer() {
                   </select>
                 </div>
 
-                {/* Corte / Silhueta */}
+                {/* Shape */}
                 <div className="flex flex-col gap-1.5">
                   <label
-                    htmlFor="filter-corte"
+                    htmlFor="filter-shape"
                     className="text-muted-foreground text-xs font-medium uppercase tracking-wider"
                   >
-                    Corte / Silhueta
+                    Silhueta
                   </label>
                   <select
-                    id="filter-corte"
-                    value={filterCorte}
-                    onChange={(e) => setFilterCorte(e.target.value)}
+                    id="filter-shape"
+                    value={filterShape}
+                    onChange={(e) => setFilterShape(e.target.value)}
                     className="border-input bg-background text-foreground h-9 rounded-md border px-3 text-sm"
                   >
-                    <option value="">Todos</option>
-                    {corteOptions.map((v) => (
+                    <option value="">Todas</option>
+                    {shapeOptions.map((v) => (
                       <option key={v} value={v}>
                         {v}
                       </option>
@@ -793,22 +900,22 @@ export function ImageAnalyzer() {
                   </select>
                 </div>
 
-                {/* Detalhes de Estilo */}
+                {/* Aesthetic */}
                 <div className="flex flex-col gap-1.5">
                   <label
-                    htmlFor="filter-detalhe"
+                    htmlFor="filter-aesthetic"
                     className="text-muted-foreground text-xs font-medium uppercase tracking-wider"
                   >
-                    Detalhes de Estilo
+                    Estética
                   </label>
                   <select
-                    id="filter-detalhe"
-                    value={filterDetalhe}
-                    onChange={(e) => setFilterDetalhe(e.target.value)}
+                    id="filter-aesthetic"
+                    value={filterAesthetic}
+                    onChange={(e) => setFilterAesthetic(e.target.value)}
                     className="border-input bg-background text-foreground h-9 rounded-md border px-3 text-sm"
                   >
-                    <option value="">Todos</option>
-                    {detalheOptions.map((v) => (
+                    <option value="">Todas</option>
+                    {aestheticOptions.map((v) => (
                       <option key={v} value={v}>
                         {v}
                       </option>
@@ -823,9 +930,9 @@ export function ImageAnalyzer() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setFilterCategoria("");
-                      setFilterCorte("");
-                      setFilterDetalhe("");
+                      setFilterCategory("");
+                      setFilterShape("");
+                      setFilterAesthetic("");
                     }}
                   >
                     Limpar filtros
@@ -883,9 +990,9 @@ export function ImageAnalyzer() {
                   </div>
                   <CardContent className="flex flex-col gap-2 pt-3">
                     {/* Título sugerido */}
-                    {entry.titulo_sugerido && (
+                    {entry.suggestedTitle && (
                       <span className="text-sm font-semibold leading-snug">
-                        {entry.titulo_sugerido}
+                        {entry.suggestedTitle}
                       </span>
                     )}
 
@@ -895,16 +1002,16 @@ export function ImageAnalyzer() {
                         Categoria
                       </span>
                       <span className="text-xs capitalize">
-                        {entry.categoria}
+                        {entry.categories?.main || "—"}
                       </span>
                     </div>
-                    {entry.descricao_sugerida && (
+                    {entry.suggestedDescription && (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Descrição
                         </span>
                         <p className="text-xs leading-relaxed text-foreground/80 line-clamp-3">
-                          {entry.descricao_sugerida}
+                          {entry.suggestedDescription}
                         </p>
                       </div>
                     )}
@@ -914,15 +1021,17 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Cor
                         </span>
-                        <span className="text-xs capitalize">{entry.cor}</span>
+                        <span className="text-xs capitalize">
+                          {entry.color?.primary || "—"}
+                        </span>
                       </div>
 
                       <div className="flex flex-col gap-0.5">
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                          Corte / Silhueta
+                          Silhueta
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.corte_silhueta}
+                          {(entry.shape ?? []).join(", ") || "—"}
                         </span>
                       </div>
 
@@ -931,16 +1040,16 @@ export function ImageAnalyzer() {
                           Estampa
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.estampa}
+                          {(entry.color?.pattern ?? []).join(", ") || "—"}
                         </span>
                       </div>
 
                       <div className="flex flex-col gap-0.5">
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                          Material
+                          Caimento
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.material || "—"}
+                          {(entry.fit ?? []).join(", ") || "—"}
                         </span>
                       </div>
 
@@ -949,7 +1058,7 @@ export function ImageAnalyzer() {
                           Ocasião
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.ocasiao || "—"}
+                          {(entry.occasion ?? []).join(", ") || "—"}
                         </span>
                       </div>
 
@@ -958,16 +1067,17 @@ export function ImageAnalyzer() {
                           Comprimento
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.comprimento || "—"}
+                          {entry.length || "—"}
                         </span>
                       </div>
 
                       <div className="flex flex-col gap-0.5">
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                          Gênero
+                          Departamento
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.genero || "—"}
+                          {(entry.categories?.department ?? []).join(", ") ||
+                            "—"}
                         </span>
                       </div>
 
@@ -976,29 +1086,20 @@ export function ImageAnalyzer() {
                           Condição
                         </span>
                         <span className="text-xs capitalize">
-                          {entry.condicao || "—"}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                          Marca
-                        </span>
-                        <span className="text-xs capitalize">
-                          {entry.marca || "—"}
+                          {entry.condition || "—"}
                         </span>
                       </div>
                     </div>
 
-                    {entry.detalhes_estilo.length > 0 && (
+                    {(entry.aesthetics ?? []).length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
-                        {entry.detalhes_estilo.map((d) => (
+                        {entry.aesthetics.map((a) => (
                           <Badge
-                            key={d}
+                            key={a}
                             variant="secondary"
                             className="text-[10px]"
                           >
-                            {d}
+                            {a}
                           </Badge>
                         ))}
                       </div>

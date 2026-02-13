@@ -107,7 +107,7 @@ export function TryOnModal({ entry, open, onOpenChange }: TryOnModalProps) {
           <AlertDialogTitle>Virtual Try-On</AlertDialogTitle>
           <AlertDialogDescription>
             {entry
-              ? `Envie uma foto de modelo para visualizar "${entry.titulo_sugerido}" vestida.`
+              ? `Envie uma foto de modelo para visualizar "${entry.suggestedTitle}" vestida.`
               : "Envie uma foto de modelo para visualizar a peça vestida."}
           </AlertDialogDescription>
         </AlertDialogHeader>

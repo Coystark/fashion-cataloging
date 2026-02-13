@@ -21,21 +21,25 @@ function buildPricingPrompt(
   return `Você é um especialista em precificação de moda de segunda mão no mercado brasileiro. Com base nas informações abaixo sobre uma peça de roupa, estime o valor de revenda.
 
 IMPORTANTE: Use a ferramenta de busca do Google (Google Search) para pesquisar preços reais e atualizados desta peça ou de peças similares em plataformas brasileiras de revenda como Repassa, Enjoei, Troc, OLX, Mercado Livre, e brechós online. Busque por "${marca} ${
-    entry.categoria
+    entry.categories.main
   }" e termos relacionados para encontrar uma base de valores reais do mercado.
 
 INFORMAÇÕES DO PRODUTO:
-- Título: ${entry.titulo_sugerido}
-- Descrição: ${entry.descricao_sugerida}
-- Categoria: ${entry.categoria}
-- Cor: ${entry.cor}
-- Corte/Silhueta: ${entry.corte_silhueta}
-- Estampa: ${entry.estampa}
-- Material: ${entry.material}
-- Ocasião: ${entry.ocasiao}
-- Comprimento: ${entry.comprimento}
-- Gênero: ${entry.genero}
-- Detalhes de estilo: ${entry.detalhes_estilo.join(", ")}
+- Título: ${entry.suggestedTitle}
+- Descrição: ${entry.suggestedDescription}
+- Categoria Principal: ${entry.categories.main}
+- Subcategorias: ${entry.categories.sub.join(", ")}
+- Departamento: ${entry.categories.department.join(", ")}
+- Cor Principal: ${entry.color.primary}
+- Estampa: ${entry.color.pattern.join(", ")}
+- Silhueta: ${entry.shape.join(", ")}
+- Caimento: ${entry.fit.join(", ")}
+- Comprimento: ${entry.length}
+- Estética: ${entry.aesthetics.join(", ")}
+- Ocasião: ${entry.occasion.join(", ")}
+- Acabamento: ${entry.finish.join(", ")}
+- Fechamento: ${entry.closure.join(", ")}
+- Condição (análise IA): ${entry.condition}
 
 INFORMAÇÕES DO USUÁRIO:
 - Qualidade/Estado: ${qualidade}
