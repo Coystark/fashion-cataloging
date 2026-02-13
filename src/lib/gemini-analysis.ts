@@ -54,7 +54,11 @@ const BASE_PROMPT = `You are a professional fashion curator and cataloging exper
 - **Constraint:** The sum of percentages in 'composition' MUST always equal 100.
 - **Condition:** 'excellent' (pristine), 'very_good' (minor wash wear, no flaws), 'good' (visible pilling/fading, no holes).
 
-### 5. COPYWRITING (Output in pt-BR)
+### 5. BRAND IDENTIFICATION
+- If a brand name or logo is clearly visible on a label, tag, or the garment itself, return it in the 'brand' field.
+- If the brand cannot be confidently identified, OMIT the 'brand' field entirely.
+
+### 6. COPYWRITING (Output in pt-BR)
 - **suggestedTitle:** Max 80 characters. Format: [Garment Type] + [Brand if visible] + [Main Feature] + [Color].
 - **suggestedDescription:** 2-3 persuasive sentences in Portuguese (pt-BR). Highlight fabric feel and versatility. Use terms like "curadoria", "peça atemporal", or "impecável".
 
@@ -68,6 +72,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     suggestedTitle: { type: Type.STRING },
     suggestedDescription: { type: Type.STRING },
+    brand: { type: Type.STRING },
     color: {
       type: Type.OBJECT,
       properties: {

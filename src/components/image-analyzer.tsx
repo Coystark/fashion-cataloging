@@ -229,6 +229,8 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         </div>
       )}
 
+      <ResultField label="Marca" value={result.brand ?? "Não identificada"} />
+
       {(result.suggestedTitle || result.suggestedDescription) && (
         <div className="border-border border-t" />
       )}
@@ -1076,6 +1078,18 @@ export function ImageAnalyzer() {
                       <span className="text-sm font-semibold leading-snug">
                         {entry.suggestedTitle}
                       </span>
+                    )}
+
+                    {/* Marca */}
+                    {entry.brand && (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                          Marca
+                        </span>
+                        <span className="text-xs font-medium">
+                          {entry.brand}
+                        </span>
+                      </div>
                     )}
 
                     {/* Categoria */}

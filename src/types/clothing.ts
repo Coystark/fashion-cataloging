@@ -310,6 +310,7 @@ export interface FabricComposition {
 export interface GarmentClassification {
   suggestedTitle: string;
   suggestedDescription: string;
+  brand?: string;
 
   color: {
     primary: Color;
