@@ -294,17 +294,18 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       )}
 
       <ResultField label="Comprimento" value={t(LengthLabels, result.length)} />
+
       <ResultField
         label="Condição"
         value={t(ConditionLabels, result.condition)}
       />
 
-      <div className="border-border border-t" />
-
       {/* Manga */}
 
       {result.sleeve && (
         <>
+          <div className="border-border border-t" />
+
           <ResultField
             label="Manga — Comprimento"
             value={t(SleeveLengthLabels, result.sleeve.length)}
@@ -319,10 +320,10 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
             label="Manga — Construção"
             value={t(SleeveConstructionLabels, result.sleeve.construction)}
           />
+
+          <div className="border-border border-t" />
         </>
       )}
-
-      <div className="border-border border-t" />
 
       {/* Decote e Costas */}
       {result.neckline && (
@@ -340,8 +341,6 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         />
       )}
 
-      <div className="border-border border-t" />
-
       {/* Acabamento e Fechamento */}
       <ResultField
         label="Acabamento"
@@ -355,7 +354,6 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       {/* Composição do Tecido */}
       {result.composition && result.composition.length > 0 && (
         <>
-          <div className="border-border border-t" />
           <ResultField
             label="Composição"
             value={
@@ -381,8 +379,6 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         }
       />
 
-      <div className="border-border border-t" />
-
       {/* Estética e Ocasião */}
       <ResultField
         label="Estética"
@@ -392,6 +388,8 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         label="Ocasião"
         value={<BadgeList items={tList(OccasionLabels, result.occasion)} />}
       />
+
+      <div className="border-border border-t" />
 
       <ResultField label="Justificativa" value={result.analysis_reasoning} />
     </div>
