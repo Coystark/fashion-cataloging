@@ -335,7 +335,7 @@ export interface GarmentClassification {
   pockets: {
     has_pockets: boolean;
     quantity: number;
-    types: string[];
+    types: PocketType[];
   };
 }
 

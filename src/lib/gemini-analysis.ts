@@ -20,6 +20,7 @@ import {
   Color,
   Pattern,
   FabricFiber,
+  PocketType,
 } from "@/types/clothing";
 import { ai, buildUsage } from "@/lib/gemini";
 
@@ -93,7 +94,9 @@ composition: Array of objects representing the fabric composition. Each object h
 pockets: Object with:
   - has_pockets: boolean
   - quantity: number of pockets visible
-  - types: Array of pocket descriptions (free text)
+  - types: Array of pocket types. Values from: [${enumValues(PocketType).join(
+    ", "
+  )}]
 
 IMPORTANT:
 - Analyze ALL images together for a comprehensive and accurate classification.
@@ -140,7 +143,7 @@ EXAMPLE OUTPUT:
   "pockets": {
     "has_pockets": false,
     "quantity": 0,
-    "types": []
+    "types": ["none"]
   }
 }`;
 
@@ -244,7 +247,7 @@ const RESPONSE_SCHEMA = {
         quantity: { type: Type.NUMBER },
         types: {
           type: Type.ARRAY,
-          items: { type: Type.STRING },
+          items: { type: Type.STRING, enum: enumValues(PocketType) },
         },
       },
       required: ["has_pockets", "quantity", "types"],
