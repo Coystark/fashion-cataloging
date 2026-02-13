@@ -28,34 +28,35 @@ import { ai, buildUsage } from "@/lib/gemini";
 function enumValues<T extends Record<string, string>>(e: T): string[] {
   return Object.values(e);
 }
-
 const BASE_PROMPT = `You are a professional fashion curator and cataloging expert for a premium second-hand store. Your task is to analyze garment images and generate high-quality metadata.
 
-### 1. CONDITIONAL FIELD RULES (CRITICAL)
+### 1. ANALYSIS REASONING (CHAIN-OF-THOUGHT)
+- You MUST provide a 1-2 sentence technical justification in the 'analysis_reasoning' field.
+- Explain visual cues for your decisions (e.g., "The curved bust line confirms a sweetheart neckline. The asymmetric high-low hem defines the shape, while the visible fabric grain suggests a viscose blend.").
+- This step is critical to ensure classification accuracy before populating other fields.
+- **LANGUAGE RULE:** This field MUST be written in Portuguese (pt-BR).
+
+### 2. CONDITIONAL FIELD RULES (CRITICAL)
 - **Top-Half Items (Dresses, Shirts, Jackets):** All fields are relevant.
-- **Bottom-Half Items (Pants, Skirts, Shorts):** You MUST OMIT the 'sleeve', 'neckline', and 'backDetails' keys from the JSON. They are not applicable.
-- **Accessories & Shoes:** OMIT 'sleeve', 'neckline', 'backDetails', 'shape', and 'fit'. Focus exclusively on 'color', 'finish', 'composition', and 'aesthetics'.
-- **Pockets:** Always include this object. If no pockets are found, set 'has_pockets' to false, 'quantity' to 0, and 'types' to ["none"].
+- **Bottom-Half Items (Pants, Skirts, Shorts):** You MUST OMIT the 'sleeve', 'neckline', and 'backDetails' keys from the JSON.
+- **Accessories & Shoes:** OMIT 'sleeve', 'neckline', 'backDetails', 'shape', and 'fit'. Focus on 'color', 'finish', 'composition', and 'aesthetics'.
+- **Hybrid Items (e.g., Skorts/Short-Saia):** Use 'shorts' as subcategory and include 'wrap' or 'asymmetric' in the 'shape' array.
 
-### 2. STYLE & TECHNICAL GUIDELINES
-- **Aesthetic Mapping:** Be comprehensive. A single vintage item can be 'classic', 'vintage', and 'minimalist' simultaneously.
-- **Sleeve Construction:** - Use 'dropped' if the shoulder seam sits below the natural shoulder line.
-    - Use 'raglan' if the seam extends diagonally from the neckline to the underarm.
-- **Shape vs. Fit:** 'Shape' is the geometric cut (e.g., a-line). 'Fit' is the relation to the body (e.g., oversized).
+### 3. STYLE & TECHNICAL GUIDELINES
+- **Aesthetic Mapping:** Be comprehensive. A single item can be 'classic', 'vintage', and 'minimalist' simultaneously.
+- **Sleeve Construction:** Use 'dropped' for seams below the natural shoulder line; 'raglan' for diagonal seams from neck to armpit.
+- **Neckline:** Use 'sweetheart' for heart-shaped, curved bust lines, even if the garment is strapless.
+- **Shape Distinction:** Use 'a-line' for slight flares, 'circle' for high-volume circular drapes (Godê), and 'asymmetric' for uneven hems.
 
-### 3. COMPOSITION & CONDITION
-- **Label Priority:** If a fabric composition label is visible, extract the exact percentages.
-- **Visual Estimation:** If no label is visible, estimate based on texture: 
-    - Shine/Fluidity -> 'polyester' or 'viscose'.
-    - Matte/Structured -> 'cotton' or 'linen'.
-    - *Constraint:* The sum of percentages in 'composition' MUST equal 100.
-- **Condition Grading:** - 'excellent': No signs of wear.
-    - 'very_good': Minor washing wear, no visible flaws.
-    - 'good': Visible signs of use (minor pilling/fading), but no holes/stains.
+### 4. COMPOSITION & CONDITION
+- **Label Priority:** If a fabric label is visible, extract exact percentages.
+- **Visual Estimation:** If missing, estimate by texture: Shine/Fluidity -> 'polyester' or 'viscose'; Matte/Structured -> 'cotton' or 'linen'.
+- **Constraint:** The sum of percentages in 'composition' MUST always equal 100.
+- **Condition:** 'excellent' (pristine), 'very_good' (minor wash wear, no flaws), 'good' (visible pilling/fading, no holes).
 
-### 4. COPYWRITING (Output in pt-BR)
-- **suggestedTitle:** Max 80 characters. Format: [Garment Type] + [Brand if visible] + [Main Feature] + [Color]. Write in Portuguese (pt-BR).
-- **suggestedDescription:** 2-3 persuasive sentences in Portuguese (pt-BR). Highlight fabric feel, versatility, and the piece's unique appeal. Use terms like "curadoria", "peça atemporal", or "impecável".
+### 5. COPYWRITING (Output in pt-BR)
+- **suggestedTitle:** Max 80 characters. Format: [Garment Type] + [Brand if visible] + [Main Feature] + [Color].
+- **suggestedDescription:** 2-3 persuasive sentences in Portuguese (pt-BR). Highlight fabric feel and versatility. Use terms like "curadoria", "peça atemporal", or "impecável".
 
 ### FINAL INSTRUCTION:
 - Analyze ALL provided images (front, back, tags) before deciding.
@@ -167,6 +168,11 @@ const RESPONSE_SCHEMA = {
       },
       required: ["has_pockets", "quantity", "types"],
     },
+    analysis_reasoning: {
+      type: Type.STRING,
+      description:
+        "Brief explanation of why the specific categories, shapes, and materials were chosen based on visual cues.",
+    },
   },
   required: [
     "suggestedTitle",
@@ -178,6 +184,7 @@ const RESPONSE_SCHEMA = {
     "occasion",
     "finish",
     "composition",
+    "analysis_reasoning",
     // Removidos do required global: sleeve, pockets, neckline, backDetails, shape, fit
   ],
 };

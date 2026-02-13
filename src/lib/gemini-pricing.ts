@@ -32,14 +32,18 @@ INFORMAÇÕES DO PRODUTO:
 - Departamento: ${entry.categories.department.join(", ")}
 - Cor Principal: ${entry.color.primary}
 - Estampa: ${entry.color.pattern.join(", ")}
-- Silhueta: ${entry.shape.join(", ")}
-- Caimento: ${entry.fit.join(", ")}
+- Silhueta: ${entry.shape?.join(", ") ?? "não identificada"}
+- Caimento: ${entry.fit?.join(", ") ?? "não identificada"}
 - Comprimento: ${entry.length}
 - Estética: ${entry.aesthetics.join(", ")}
 - Ocasião: ${entry.occasion.join(", ")}
 - Acabamento: ${entry.finish.join(", ")}
 - Fechamento: ${entry.closure.join(", ")}
-- Composição: ${(entry.composition ?? []).map((c) => `${c.fiber} ${c.percentage}%`).join(", ") || "não identificada"}
+- Composição: ${
+    (entry.composition ?? [])
+      .map((c) => `${c.fiber} ${c.percentage}%`)
+      .join(", ") || "não identificada"
+  }
 - Condição (análise IA): ${entry.condition}
 
 INFORMAÇÕES DO USUÁRIO:

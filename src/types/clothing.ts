@@ -18,14 +18,23 @@ export type MainCategory = (typeof MainCategory)[keyof typeof MainCategory];
 
 export const SubCategory = {
   TOPS: "tops",
+  SHIRTS: "shirts",
   BOTTOMS: "bottoms",
   DRESSES: "dresses",
+  PARTY_DRESSES: "party_dresses",
+  BRIDAL: "bridal",
+  SKIRTS: "skirts",
+  SHORTS: "shorts",
   OUTERWEAR: "outerwear",
   KNITWEAR: "knitwear",
   ACTIVEWEAR: "activewear",
   LINGERIE: "lingerie",
   BEACHWEAR: "beachwear",
   TAILORING: "tailoring",
+  JUMPSUITS: "jumpsuits",
+  VESTS: "vests",
+  SETS: "sets",
+  RECYCLING: "recycling",
 } as const;
 export type SubCategory = (typeof SubCategory)[keyof typeof SubCategory];
 
@@ -41,6 +50,9 @@ export const Shape = {
   FLARE: "flare",
   CIRCLE: "circle",
   ASYMMETRIC: "asymmetric",
+  BALLOON: "balloon",
+  BOXV: "box",
+  TRAPEZE: "trapeze",
   OTHER: "other",
 } as const;
 export type Shape = (typeof Shape)[keyof typeof Shape];
@@ -337,6 +349,7 @@ export interface GarmentClassification {
     quantity: number;
     types: PocketType[];
   };
+  analysis_reasoning: string;
 }
 
 // --- TIPOS DE SUPORTE ---

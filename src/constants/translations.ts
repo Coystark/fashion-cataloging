@@ -56,15 +56,24 @@ export const MainCategoryLabels: Record<MainCategory, string> = {
 
 // --- Subcategoria ---
 export const SubCategoryLabels: Record<SubCategory, string> = {
-  tops: "Blusas",
+  tops: "Blusas, Camisetas e Polos",
+  shirts: "Camisas",
   bottoms: "Calças",
   dresses: "Vestidos",
-  outerwear: "Casacos",
-  knitwear: "Tricô",
-  activewear: "Esportivo",
-  lingerie: "Lingerie",
-  beachwear: "Moda Praia",
-  tailoring: "Alfaiataria",
+  party_dresses: "Vestidos de Festa",
+  bridal: "Vestidos de Noiva",
+  skirts: "Saias",
+  shorts: "Shorts e Bermudas",
+  outerwear: "Jaquetas e Casacos",
+  knitwear: "Malhas e Suéteres",
+  activewear: "Moda Fitness",
+  lingerie: "Lingerie e Pijamas",
+  beachwear: "Praia",
+  tailoring: "Ternos, Blazers e Blazers Masculinos",
+  jumpsuits: "Macacão",
+  vests: "Coletes",
+  sets: "Conjuntos",
+  recycling: "Re-cycling",
 };
 
 // --- Silhueta ---
@@ -76,9 +85,12 @@ export const ShapeLabels: Record<Shape, string> = {
   empire: "Império",
   "shirt-dress": "Chemise",
   straight: "Reto",
-  flare: "Godê",
-  circle: "Circular",
+  flare: "Abertura Ampla",
+  circle: "Godê",
   asymmetric: "Assimétrico",
+  balloon: "Balonê",
+  box: "Quadrado",
+  trapeze: "Trapézio",
   other: "Outro",
 };
 
@@ -111,7 +123,7 @@ export const SleeveTypeLabels: Record<SleeveType, string> = {
   bishop: "Bispo",
   batwing: "Morcego",
   butterfly: "Borboleta",
-  cap: "Capinha",
+  cap: "Copinha",
   baloon: "Balão",
   flare: "Flare",
   split: "Fenda",
@@ -237,8 +249,8 @@ export const LengthLabels: Record<Length, string> = {
   maxi: "Longo",
   floor_length: "Até o chão",
   cropped: "Cropped",
-  standard: "Padrão",
-  "7_8_length": "⅞",
+  standard: "Regular",
+  "7_8_length": "7/8",
 };
 
 // --- Tipo de Bolso ---

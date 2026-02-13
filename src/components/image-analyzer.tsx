@@ -392,6 +392,8 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         label="Ocasião"
         value={<BadgeList items={tList(OccasionLabels, result.occasion)} />}
       />
+
+      <ResultField label="Justificativa" value={result.analysis_reasoning} />
     </div>
   );
 }
