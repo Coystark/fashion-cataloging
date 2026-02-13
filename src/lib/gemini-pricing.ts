@@ -39,6 +39,7 @@ INFORMAÇÕES DO PRODUTO:
 - Ocasião: ${entry.occasion.join(", ")}
 - Acabamento: ${entry.finish.join(", ")}
 - Fechamento: ${entry.closure.join(", ")}
+- Composição: ${(entry.composition ?? []).map((c) => `${c.fiber} ${c.percentage}%`).join(", ") || "não identificada"}
 - Condição (análise IA): ${entry.condition}
 
 INFORMAÇÕES DO USUÁRIO:

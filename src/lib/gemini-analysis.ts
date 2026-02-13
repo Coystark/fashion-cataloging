@@ -19,6 +19,7 @@ import {
   Length,
   Color,
   Pattern,
+  FabricFiber,
 } from "@/types/clothing";
 import { ai, buildUsage } from "@/lib/gemini";
 
@@ -84,6 +85,11 @@ closure: Array of closure types. Values from: [${enumValues(Closure).join(
   ", "
 )}]
 
+composition: Array of objects representing the fabric composition. Each object has:
+  - fiber: The fiber type. One of: [${enumValues(FabricFiber).join(", ")}]
+  - percentage: The percentage of this fiber in the composition (0-100). The sum of all percentages should equal 100.
+  If the fabric label is visible, use the exact percentages. Otherwise, estimate based on visual analysis. If unknown, use [{"fiber": "unknown", "percentage": 100}].
+
 pockets: Object with:
   - has_pockets: boolean
   - quantity: number of pockets visible
@@ -127,6 +133,10 @@ EXAMPLE OUTPUT:
   "backDetails": ["closed"],
   "finish": ["smooth"],
   "closure": ["hidden_zipper"],
+  "composition": [
+    {"fiber": "polyester", "percentage": 95},
+    {"fiber": "elastane", "percentage": 5}
+  ],
   "pockets": {
     "has_pockets": false,
     "quantity": 0,
@@ -216,6 +226,17 @@ const RESPONSE_SCHEMA = {
       type: Type.ARRAY,
       items: { type: Type.STRING, enum: enumValues(Closure) },
     },
+    composition: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          fiber: { type: Type.STRING, enum: enumValues(FabricFiber) },
+          percentage: { type: Type.NUMBER },
+        },
+        required: ["fiber", "percentage"],
+      },
+    },
     pockets: {
       type: Type.OBJECT,
       properties: {
@@ -245,6 +266,7 @@ const RESPONSE_SCHEMA = {
     "backDetails",
     "finish",
     "closure",
+    "composition",
     "pockets",
   ],
 };

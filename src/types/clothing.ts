@@ -258,6 +258,42 @@ export const Pattern = {
 } as const;
 export type Pattern = (typeof Pattern)[keyof typeof Pattern];
 
+// --- COMPOSIÇÃO DO TECIDO ---
+export const FabricFiber = {
+  // Naturais (Vegetais/Animais)
+  COTTON: "cotton",
+  LINEN: "linen",
+  SILK: "silk",
+  WOOL: "wool",
+  CASHMERE: "cashmere",
+  HEMP: "hemp",
+
+  // Sintéticas/Artificiais
+  POLYESTER: "polyester",
+  VISCOSE: "viscose",
+  ELASTANE: "elastane", // Lycra
+  POLYAMIDE: "polyamide", // Nylon
+  ACRYLIC: "acrylic",
+  ACETATE: "acetate",
+  RAYON: "rayon",
+  LYOCELL: "lyocell", // Tencel
+
+  // Couro e Especiais
+  LEATHER: "leather",
+  SUEDE: "suede",
+  FUR: "fur",
+  FAUX_LEATHER: "faux_leather",
+  DENIM: "denim",
+
+  UNKNOWN: "unknown",
+} as const;
+export type FabricFiber = (typeof FabricFiber)[keyof typeof FabricFiber];
+
+export interface FabricComposition {
+  fiber: FabricFiber;
+  percentage: number; // 0 a 100
+}
+
 // --- INTERFACE FINAL ---
 export interface GarmentClassification {
   suggestedTitle: string;
@@ -294,6 +330,7 @@ export interface GarmentClassification {
   backDetails: BackDetail[];
   finish: Finish[];
   closure: Closure[];
+  composition: FabricComposition[];
 
   pockets: {
     has_pockets: boolean;

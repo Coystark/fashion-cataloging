@@ -287,6 +287,23 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         value={<BadgeList items={result.closure} />}
       />
 
+      {/* Composição do Tecido */}
+      {result.composition && result.composition.length > 0 && (
+        <>
+          <div className="border-border border-t" />
+          <ResultField
+            label="Composição"
+            value={
+              <BadgeList
+                items={result.composition.map(
+                  (c) => `${c.fiber} ${c.percentage}%`
+                )}
+              />
+            }
+          />
+        </>
+      )}
+
       {/* Bolsos */}
       <ResultField
         label="Bolsos"
