@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
 import { Condition } from "@/types/clothing";
+import { t, ConditionLabels } from "@/constants/translations";
 import { estimatePrice, type PriceEstimate } from "@/lib/gemini-pricing";
 import {
   loadPriceHistoryForItem,
@@ -163,13 +164,13 @@ export function PriceEstimateModal({
               onValueChange={setQualidade}
               disabled={loading}
             >
-              <SelectTrigger className="w-full capitalize">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione a condição" />
               </SelectTrigger>
               <SelectContent>
                 {CONDITION_OPTIONS.map((c) => (
-                  <SelectItem key={c} value={c} className="capitalize">
-                    {c}
+                  <SelectItem key={c} value={c}>
+                    {t(ConditionLabels, c)}
                   </SelectItem>
                 ))}
               </SelectContent>

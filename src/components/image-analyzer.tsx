@@ -34,6 +34,30 @@ import {
 } from "@/components/ui/carousel";
 import { Delete01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  t,
+  tList,
+  MainCategoryLabels,
+  DepartmentLabels,
+  SubCategoryLabels,
+  ColorLabels,
+  PatternLabels,
+  ShapeLabels,
+  FitLabels,
+  LengthLabels,
+  ConditionLabels,
+  SleeveLengthLabels,
+  SleeveTypeLabels,
+  SleeveConstructionLabels,
+  NecklineLabels,
+  BackDetailLabels,
+  FinishLabels,
+  ClosureLabels,
+  FabricFiberLabels,
+  PocketTypeLabels,
+  AestheticLabels,
+  OccasionLabels,
+} from "@/constants/translations";
 
 const MAX_IMAGES = 3;
 
@@ -173,7 +197,7 @@ function ResultField({
       <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
         {label}
       </span>
-      <div className="text-sm capitalize">{value || "—"}</div>
+      <div className="text-sm">{value || "—"}</div>
     </div>
   );
 }
@@ -210,29 +234,43 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       )}
 
       {/* Categorias */}
-      <ResultField label="Categoria Principal" value={result.categories.main} />
+      <ResultField
+        label="Categoria Principal"
+        value={t(MainCategoryLabels, result.categories.main)}
+      />
       <ResultField
         label="Departamento"
-        value={<BadgeList items={result.categories.department} />}
+        value={
+          <BadgeList
+            items={tList(DepartmentLabels, result.categories.department)}
+          />
+        }
       />
       <ResultField
         label="Subcategorias"
-        value={<BadgeList items={result.categories.sub} />}
+        value={
+          <BadgeList items={tList(SubCategoryLabels, result.categories.sub)} />
+        }
       />
 
       <div className="border-border border-t" />
 
       {/* Cor */}
-      <ResultField label="Cor Principal" value={result.color.primary} />
+      <ResultField
+        label="Cor Principal"
+        value={t(ColorLabels, result.color.primary)}
+      />
       {result.color.secondary.length > 0 && (
         <ResultField
           label="Cores Secundárias"
-          value={<BadgeList items={result.color.secondary} />}
+          value={
+            <BadgeList items={tList(ColorLabels, result.color.secondary)} />
+          }
         />
       )}
       <ResultField
         label="Estampa"
-        value={<BadgeList items={result.color.pattern} />}
+        value={<BadgeList items={tList(PatternLabels, result.color.pattern)} />}
       />
       <ResultField
         label="Multicolorido"
@@ -245,18 +283,21 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       {result.shape && result.shape.length > 0 && (
         <ResultField
           label="Silhueta"
-          value={<BadgeList items={result.shape} />}
+          value={<BadgeList items={tList(ShapeLabels, result.shape)} />}
         />
       )}
       {result.fit && result.fit.length > 0 && (
         <ResultField
           label="Caimento (Fit)"
-          value={<BadgeList items={result.fit} />}
+          value={<BadgeList items={tList(FitLabels, result.fit)} />}
         />
       )}
 
-      <ResultField label="Comprimento" value={result.length} />
-      <ResultField label="Condição" value={result.condition} />
+      <ResultField label="Comprimento" value={t(LengthLabels, result.length)} />
+      <ResultField
+        label="Condição"
+        value={t(ConditionLabels, result.condition)}
+      />
 
       <div className="border-border border-t" />
 
@@ -266,15 +307,17 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         <>
           <ResultField
             label="Manga — Comprimento"
-            value={result.sleeve.length}
+            value={t(SleeveLengthLabels, result.sleeve.length)}
           />
           <ResultField
             label="Manga — Tipo"
-            value={<BadgeList items={result.sleeve.type} />}
+            value={
+              <BadgeList items={tList(SleeveTypeLabels, result.sleeve.type)} />
+            }
           />
           <ResultField
             label="Manga — Construção"
-            value={result.sleeve.construction}
+            value={t(SleeveConstructionLabels, result.sleeve.construction)}
           />
         </>
       )}
@@ -283,12 +326,17 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
 
       {/* Decote e Costas */}
       {result.neckline && (
-        <ResultField label="Decote" value={result.neckline} />
+        <ResultField
+          label="Decote"
+          value={t(NecklineLabels, result.neckline)}
+        />
       )}
       {result.backDetails && result.backDetails.length > 0 && (
         <ResultField
           label="Detalhes Costas"
-          value={<BadgeList items={result.backDetails} />}
+          value={
+            <BadgeList items={tList(BackDetailLabels, result.backDetails)} />
+          }
         />
       )}
 
@@ -297,11 +345,11 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       {/* Acabamento e Fechamento */}
       <ResultField
         label="Acabamento"
-        value={<BadgeList items={result.finish} />}
+        value={<BadgeList items={tList(FinishLabels, result.finish)} />}
       />
       <ResultField
         label="Fechamento"
-        value={<BadgeList items={result.closure} />}
+        value={<BadgeList items={tList(ClosureLabels, result.closure)} />}
       />
 
       {/* Composição do Tecido */}
@@ -313,7 +361,7 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
             value={
               <BadgeList
                 items={result.composition.map(
-                  (c) => `${c.fiber} ${c.percentage}%`
+                  (c) => `${t(FabricFiberLabels, c.fiber)} ${c.percentage}%`
                 )}
               />
             }
@@ -327,7 +375,7 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
         value={
           result.pockets.has_pockets
             ? `Sim (${result.pockets.quantity}) — ${
-                result.pockets.types.join(", ") || "—"
+                tList(PocketTypeLabels, result.pockets.types).join(", ") || "—"
               }`
             : "Não"
         }
@@ -338,11 +386,11 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       {/* Estética e Ocasião */}
       <ResultField
         label="Estética"
-        value={<BadgeList items={result.aesthetics} />}
+        value={<BadgeList items={tList(AestheticLabels, result.aesthetics)} />}
       />
       <ResultField
         label="Ocasião"
-        value={<BadgeList items={result.occasion} />}
+        value={<BadgeList items={tList(OccasionLabels, result.occasion)} />}
       />
     </div>
   );
@@ -905,7 +953,7 @@ export function ImageAnalyzer() {
                     <option value="">Todas</option>
                     {categoryOptions.map((v) => (
                       <option key={v} value={v}>
-                        {v}
+                        {t(MainCategoryLabels, v)}
                       </option>
                     ))}
                   </select>
@@ -928,7 +976,7 @@ export function ImageAnalyzer() {
                     <option value="">Todas</option>
                     {shapeOptions.map((v) => (
                       <option key={v} value={v}>
-                        {v}
+                        {t(ShapeLabels, v)}
                       </option>
                     ))}
                   </select>
@@ -951,7 +999,7 @@ export function ImageAnalyzer() {
                     <option value="">Todas</option>
                     {aestheticOptions.map((v) => (
                       <option key={v} value={v}>
-                        {v}
+                        {t(AestheticLabels, v)}
                       </option>
                     ))}
                   </select>
@@ -1035,8 +1083,10 @@ export function ImageAnalyzer() {
                       <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                         Categoria
                       </span>
-                      <span className="text-xs capitalize">
-                        {entry.categories?.main || "—"}
+                      <span className="text-xs">
+                        {entry.categories?.main
+                          ? t(MainCategoryLabels, entry.categories.main)
+                          : "—"}
                       </span>
                     </div>
                     {entry.suggestedDescription && (
@@ -1055,8 +1105,10 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Cor
                         </span>
-                        <span className="text-xs capitalize">
-                          {entry.color?.primary || "—"}
+                        <span className="text-xs">
+                          {entry.color?.primary
+                            ? t(ColorLabels, entry.color.primary)
+                            : "—"}
                         </span>
                       </div>
 
@@ -1064,8 +1116,10 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Silhueta
                         </span>
-                        <span className="text-xs capitalize">
-                          {(entry.shape ?? []).join(", ") || "—"}
+                        <span className="text-xs">
+                          {(entry.shape ?? []).length > 0
+                            ? tList(ShapeLabels, entry.shape!).join(", ")
+                            : "—"}
                         </span>
                       </div>
 
@@ -1073,8 +1127,12 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Estampa
                         </span>
-                        <span className="text-xs capitalize">
-                          {(entry.color?.pattern ?? []).join(", ") || "—"}
+                        <span className="text-xs">
+                          {(entry.color?.pattern ?? []).length > 0
+                            ? tList(PatternLabels, entry.color.pattern).join(
+                                ", "
+                              )
+                            : "—"}
                         </span>
                       </div>
 
@@ -1082,8 +1140,10 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Caimento
                         </span>
-                        <span className="text-xs capitalize">
-                          {(entry.fit ?? []).join(", ") || "—"}
+                        <span className="text-xs">
+                          {(entry.fit ?? []).length > 0
+                            ? tList(FitLabels, entry.fit!).join(", ")
+                            : "—"}
                         </span>
                       </div>
 
@@ -1091,8 +1151,10 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Ocasião
                         </span>
-                        <span className="text-xs capitalize">
-                          {(entry.occasion ?? []).join(", ") || "—"}
+                        <span className="text-xs">
+                          {(entry.occasion ?? []).length > 0
+                            ? tList(OccasionLabels, entry.occasion).join(", ")
+                            : "—"}
                         </span>
                       </div>
 
@@ -1100,8 +1162,8 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Comprimento
                         </span>
-                        <span className="text-xs capitalize">
-                          {entry.length || "—"}
+                        <span className="text-xs">
+                          {entry.length ? t(LengthLabels, entry.length) : "—"}
                         </span>
                       </div>
 
@@ -1109,9 +1171,13 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Departamento
                         </span>
-                        <span className="text-xs capitalize">
-                          {(entry.categories?.department ?? []).join(", ") ||
-                            "—"}
+                        <span className="text-xs">
+                          {(entry.categories?.department ?? []).length > 0
+                            ? tList(
+                                DepartmentLabels,
+                                entry.categories.department
+                              ).join(", ")
+                            : "—"}
                         </span>
                       </div>
 
@@ -1119,8 +1185,10 @@ export function ImageAnalyzer() {
                         <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
                           Condição
                         </span>
-                        <span className="text-xs capitalize">
-                          {entry.condition || "—"}
+                        <span className="text-xs">
+                          {entry.condition
+                            ? t(ConditionLabels, entry.condition)
+                            : "—"}
                         </span>
                       </div>
                     </div>
@@ -1133,7 +1201,7 @@ export function ImageAnalyzer() {
                             variant="secondary"
                             className="text-[10px]"
                           >
-                            {a}
+                            {t(AestheticLabels, a)}
                           </Badge>
                         ))}
                       </div>
