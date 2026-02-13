@@ -242,38 +242,55 @@ function AnalysisResultDisplay({ result }: { result: GarmentClassification }) {
       <div className="border-border border-t" />
 
       {/* Modelagem */}
-      <ResultField
-        label="Silhueta"
-        value={<BadgeList items={result.shape} />}
-      />
-      <ResultField
-        label="Caimento (Fit)"
-        value={<BadgeList items={result.fit} />}
-      />
+      {result.shape && result.shape.length > 0 && (
+        <ResultField
+          label="Silhueta"
+          value={<BadgeList items={result.shape} />}
+        />
+      )}
+      {result.fit && result.fit.length > 0 && (
+        <ResultField
+          label="Caimento (Fit)"
+          value={<BadgeList items={result.fit} />}
+        />
+      )}
+
       <ResultField label="Comprimento" value={result.length} />
       <ResultField label="Condição" value={result.condition} />
 
       <div className="border-border border-t" />
 
       {/* Manga */}
-      <ResultField label="Manga — Comprimento" value={result.sleeve.length} />
-      <ResultField
-        label="Manga — Tipo"
-        value={<BadgeList items={result.sleeve.type} />}
-      />
-      <ResultField
-        label="Manga — Construção"
-        value={result.sleeve.construction}
-      />
+
+      {result.sleeve && (
+        <>
+          <ResultField
+            label="Manga — Comprimento"
+            value={result.sleeve.length}
+          />
+          <ResultField
+            label="Manga — Tipo"
+            value={<BadgeList items={result.sleeve.type} />}
+          />
+          <ResultField
+            label="Manga — Construção"
+            value={result.sleeve.construction}
+          />
+        </>
+      )}
 
       <div className="border-border border-t" />
 
       {/* Decote e Costas */}
-      <ResultField label="Decote" value={result.neckline} />
-      <ResultField
-        label="Detalhes Costas"
-        value={<BadgeList items={result.backDetails} />}
-      />
+      {result.neckline && (
+        <ResultField label="Decote" value={result.neckline} />
+      )}
+      {result.backDetails && result.backDetails.length > 0 && (
+        <ResultField
+          label="Detalhes Costas"
+          value={<BadgeList items={result.backDetails} />}
+        />
+      )}
 
       <div className="border-border border-t" />
 

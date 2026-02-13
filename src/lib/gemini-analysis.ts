@@ -29,123 +29,38 @@ function enumValues<T extends Record<string, string>>(e: T): string[] {
   return Object.values(e);
 }
 
-const BASE_PROMPT = `You are a fashion cataloging expert. Analyze the provided garment images (may include front, back, and fabric close-up photos) and return ONLY a JSON object following these rules:
+const BASE_PROMPT = `You are a professional fashion curator and cataloging expert for a premium second-hand store. Your task is to analyze garment images and generate high-quality metadata.
 
-suggestedTitle: Create a short, attractive title for the product listing (max 80 characters). It should be descriptive and include the category, main color, and a distinctive feature. Examples: "Black Midi Sheath Dress with Side Slit", "Blue Striped Long Sleeve Shirt", "Pink Floral A-Line Blouse with Ruffles".
+### 1. CONDITIONAL FIELD RULES (CRITICAL)
+- **Top-Half Items (Dresses, Shirts, Jackets):** All fields are relevant.
+- **Bottom-Half Items (Pants, Skirts, Shorts):** You MUST OMIT the 'sleeve', 'neckline', and 'backDetails' keys from the JSON. They are not applicable.
+- **Accessories & Shoes:** OMIT 'sleeve', 'neckline', 'backDetails', 'shape', and 'fit'. Focus exclusively on 'color', 'finish', 'composition', and 'aesthetics'.
+- **Pockets:** Always include this object. If no pockets are found, set 'has_pockets' to false, 'quantity' to 0, and 'types' to ["none"].
 
-suggestedDescription: Create a commercial product description (2-4 sentences). Highlight the material, fit, style details, and occasions. Use attractive, professional language.
+### 2. STYLE & TECHNICAL GUIDELINES
+- **Aesthetic Mapping:** Be comprehensive. A single vintage item can be 'classic', 'vintage', and 'minimalist' simultaneously.
+- **Sleeve Construction:** - Use 'dropped' if the shoulder seam sits below the natural shoulder line.
+    - Use 'raglan' if the seam extends diagonally from the neckline to the underarm.
+- **Shape vs. Fit:** 'Shape' is the geometric cut (e.g., a-line). 'Fit' is the relation to the body (e.g., oversized).
 
-color: Object with:
-  - primary: The dominant color. One of: [${enumValues(Color).join(", ")}]
-  - secondary: Array of other colors present. Values from: [${enumValues(
-    Color
-  ).join(", ")}]
-  - pattern: Array of patterns detected. Values from: [${enumValues(
-    Pattern
-  ).join(", ")}]
-  - is_multicolor: boolean, true if the garment has 3+ colors
+### 3. COMPOSITION & CONDITION
+- **Label Priority:** If a fabric composition label is visible, extract the exact percentages.
+- **Visual Estimation:** If no label is visible, estimate based on texture: 
+    - Shine/Fluidity -> 'polyester' or 'viscose'.
+    - Matte/Structured -> 'cotton' or 'linen'.
+    - *Constraint:* The sum of percentages in 'composition' MUST equal 100.
+- **Condition Grading:** - 'excellent': No signs of wear.
+    - 'very_good': Minor washing wear, no visible flaws.
+    - 'good': Visible signs of use (minor pilling/fading), but no holes/stains.
 
-categories: Object with:
-  - department: Array of target departments. Values from: [${enumValues(
-    Department
-  ).join(", ")}]
-  - main: The main category. One of: [${enumValues(MainCategory).join(", ")}]
-  - sub: Array of applicable subcategories. Values from: [${enumValues(
-    SubCategory
-  ).join(", ")}]
+### 4. COPYWRITING (Output in pt-BR)
+- **suggestedTitle:** Max 80 characters. Format: [Garment Type] + [Brand if visible] + [Main Feature] + [Color]. Write in Portuguese (pt-BR).
+- **suggestedDescription:** 2-3 persuasive sentences in Portuguese (pt-BR). Highlight fabric feel, versatility, and the piece's unique appeal. Use terms like "curadoria", "peça atemporal", or "impecável".
 
-shape: Array of applicable silhouettes. Values from: [${enumValues(Shape).join(
-  ", "
-)}]
-fit: Array of applicable fits. Values from: [${enumValues(Fit).join(", ")}]
-condition: The garment condition. One of: [${enumValues(Condition).join(", ")}]
-
-sleeve: Object with:
-  - length: One of: [${enumValues(SleeveLength).join(", ")}]
-  - type: Array of sleeve types. Values from: [${enumValues(SleeveType).join(
-    ", "
-  )}]
-  - construction: One of: [${enumValues(SleeveConstruction).join(", ")}]
-
-aesthetics: Array of applicable aesthetics. Values from: [${enumValues(
-  Aesthetic
-).join(", ")}]
-occasion: Array of suitable occasions. Values from: [${enumValues(
-  Occasion
-).join(", ")}]
-
-length: The garment length. One of: [${enumValues(Length).join(", ")}]
-neckline: The neckline type. One of: [${enumValues(Neckline).join(", ")}]
-backDetails: Array of back details. Values from: [${enumValues(BackDetail).join(
-  ", "
-)}]
-finish: Array of fabric finishes. Values from: [${enumValues(Finish).join(
-  ", "
-)}]
-closure: Array of closure types. Values from: [${enumValues(Closure).join(
-  ", "
-)}]
-
-composition: Array of objects representing the fabric composition. Each object has:
-  - fiber: The fiber type. One of: [${enumValues(FabricFiber).join(", ")}]
-  - percentage: The percentage of this fiber in the composition (0-100). The sum of all percentages should equal 100.
-  If the fabric label is visible, use the exact percentages. Otherwise, estimate based on visual analysis. If unknown, use [{"fiber": "unknown", "percentage": 100}].
-
-pockets: Object with:
-  - has_pockets: boolean
-  - quantity: number of pockets visible
-  - types: Array of pocket types. Values from: [${enumValues(PocketType).join(
-    ", "
-  )}]
-
-IMPORTANT:
-- Analyze ALL images together for a comprehensive and accurate classification.
-- Use ONLY values from the provided lists for enum fields. Do not invent values.
-- For array fields, include ALL applicable values, not just one.
-- suggestedTitle and suggestedDescription are free text — be creative and commercial.
-- Write suggestedTitle and suggestedDescription in Portuguese (pt-BR).
-
-EXAMPLE OUTPUT:
-
-{
-  "suggestedTitle": "Vestido Midi Preto Tubinho com Fenda Elegante",
-  "suggestedDescription": "Vestido tubinho preto em crepe de alta qualidade, perfeito para festas e eventos especiais. Modelo tomara que caia com fenda lateral que confere charme e sofisticação.",
-  "color": {
-    "primary": "black",
-    "secondary": [],
-    "pattern": ["solid"],
-    "is_multicolor": false
-  },
-  "categories": {
-    "department": ["women"],
-    "main": "clothing",
-    "sub": ["dresses"]
-  },
-  "shape": ["sheath"],
-  "fit": ["bodycon"],
-  "condition": "very_good",
-  "sleeve": {
-    "length": "strapless",
-    "type": ["classic"],
-    "construction": "set-in"
-  },
-  "aesthetics": ["classic", "glam"],
-  "occasion": ["party", "formal"],
-  "length": "midi",
-  "neckline": "strapless",
-  "backDetails": ["closed"],
-  "finish": ["smooth"],
-  "closure": ["hidden_zipper"],
-  "composition": [
-    {"fiber": "polyester", "percentage": 95},
-    {"fiber": "elastane", "percentage": 5}
-  ],
-  "pockets": {
-    "has_pockets": false,
-    "quantity": 0,
-    "types": ["none"]
-  }
-}`;
+### FINAL INSTRUCTION:
+- Analyze ALL provided images (front, back, tags) before deciding.
+- Strictly use the enum values provided in the responseSchema.
+- For array fields, include ALL applicable values to maximize metadata richness.`;
 
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -258,19 +173,12 @@ const RESPONSE_SCHEMA = {
     "suggestedDescription",
     "color",
     "categories",
-    "shape",
-    "fit",
     "condition",
-    "sleeve",
     "aesthetics",
     "occasion",
-    "length",
-    "neckline",
-    "backDetails",
     "finish",
-    "closure",
     "composition",
-    "pockets",
+    // Removidos do required global: sleeve, pockets, neckline, backDetails, shape, fit
   ],
 };
 

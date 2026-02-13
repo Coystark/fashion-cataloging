@@ -312,11 +312,11 @@ export interface GarmentClassification {
     sub: SubCategory[];
   };
 
-  shape: Shape[];
-  fit: Fit[];
+  shape?: Shape[];
+  fit?: Fit[];
   condition: Condition;
 
-  sleeve: {
+  sleeve?: {
     length: SleeveLength;
     type: SleeveType[];
     construction: SleeveConstruction;
@@ -326,8 +326,8 @@ export interface GarmentClassification {
   occasion: Occasion[];
 
   length: Length;
-  neckline: Neckline;
-  backDetails: BackDetail[];
+  neckline?: Neckline;
+  backDetails?: BackDetail[];
   finish: Finish[];
   closure: Closure[];
   composition: FabricComposition[];
