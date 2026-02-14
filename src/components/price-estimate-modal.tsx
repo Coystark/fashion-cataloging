@@ -1,7 +1,5 @@
 import * as React from "react";
 import type { AnalysisEntry, PriceEstimateEntry } from "@/types/clothing";
-import { Condition } from "@/types/clothing";
-import { t, ConditionLabels } from "@/constants/translations";
 import { estimatePrice, type PriceEstimate } from "@/lib/gemini-pricing";
 import {
   loadPriceHistoryForItem,
@@ -20,14 +18,6 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete01Icon } from "@hugeicons/core-free-icons";
 
@@ -35,8 +25,6 @@ const fmtBRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
-
-const CONDITION_OPTIONS = Object.values(Condition);
 
 interface PriceEstimateModalProps {
   entry: AnalysisEntry | null;
@@ -49,8 +37,6 @@ export function PriceEstimateModal({
   open,
   onOpenChange,
 }: PriceEstimateModalProps) {
-  const [qualidade, setQualidade] = React.useState("");
-  const [marca, setMarca] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<PriceEstimate | null>(null);
@@ -72,16 +58,11 @@ export function PriceEstimateModal({
     setAverages(computeItemAverages(history));
   }
 
-  // Carrega histórico do item quando o modal abre; reseta form quando fecha
+  // Carrega histórico do item quando o modal abre; reseta quando fecha
   React.useEffect(() => {
     if (open) {
       refreshHistory();
-      // Auto-preenche com dados da análise (se disponíveis)
-      setQualidade(entry?.condition || "");
-      setMarca("");
     } else {
-      setQualidade("");
-      setMarca("");
       setLoading(false);
       setError(null);
       setResult(null);
@@ -92,18 +73,14 @@ export function PriceEstimateModal({
   }, [open, entry?.id]);
 
   async function handleEstimate() {
-    if (!entry || !qualidade.trim() || !marca.trim()) return;
+    if (!entry) return;
 
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const { estimate } = await estimatePrice(
-        entry,
-        qualidade.trim(),
-        marca.trim()
-      );
+      const { estimate, usage } = await estimatePrice(entry);
       setResult(estimate);
 
       // Salva no histórico vinculado a este item
@@ -111,14 +88,15 @@ export function PriceEstimateModal({
         id: crypto.randomUUID(),
         analysisId: entry.id,
         category: entry.categories.main,
-        marca: marca.trim(),
-        qualidade: qualidade.trim(),
+        marca: entry.brand || "sem marca",
+        qualidade: entry.condition,
         suggestedTitle: entry.suggestedTitle,
-        precoMinimo: estimate.precoMinimo,
-        precoMaximo: estimate.precoMaximo,
-        precoSugerido: estimate.precoSugerido,
-        justificativa: estimate.justificativa,
+        precoMinimo: estimate.min_price,
+        precoMaximo: estimate.max_price,
+        precoSugerido: estimate.suggested_price,
+        justificativa: estimate.justification,
         estimatedAt: new Date().toISOString(),
+        usage,
       };
       savePriceEstimate(priceEntry);
       refreshHistory();
@@ -139,8 +117,6 @@ export function PriceEstimateModal({
     refreshHistory();
   }
 
-  const canSubmit = qualidade.trim().length > 0 && marca.trim().length > 0;
-
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-lg sm:max-w-lg max-h-[85vh] flex flex-col">
@@ -148,53 +124,14 @@ export function PriceEstimateModal({
           <AlertDialogTitle>Estimar Preço</AlertDialogTitle>
           <AlertDialogDescription>
             {entry
-              ? `Informe a qualidade e marca para estimar o preço de "${entry.suggestedTitle}".`
-              : "Informe a qualidade e marca da peça."}
+              ? `Estimar preço de "${entry.suggestedTitle}" (${
+                  entry.brand || "sem marca"
+                } · ${entry.condition}).`
+              : "Selecione um item para estimar o preço."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
-          {/* Qualidade / Condição */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-muted-foreground text-xs font-medium">
-              Condição / Estado da peça
-            </label>
-            <Select
-              value={qualidade}
-              onValueChange={setQualidade}
-              disabled={loading}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione a condição" />
-              </SelectTrigger>
-              <SelectContent>
-                {CONDITION_OPTIONS.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {t(ConditionLabels, c)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Marca */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="price-marca"
-              className="text-muted-foreground text-xs font-medium"
-            >
-              Marca
-            </label>
-            <Input
-              id="price-marca"
-              type="text"
-              placeholder='Ex: "Zara", "Farm", "Gucci", "sem marca"'
-              value={marca}
-              onChange={(e) => setMarca(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
           {/* Loading */}
           {loading && (
             <div className="flex items-center gap-3 py-2">
@@ -217,7 +154,7 @@ export function PriceEstimateModal({
                     Mínimo
                   </span>
                   <span className="text-sm font-semibold tabular-nums">
-                    {fmtBRL.format(result.precoMinimo)}
+                    {fmtBRL.format(result.min_price)}
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -225,7 +162,7 @@ export function PriceEstimateModal({
                     Sugerido
                   </span>
                   <span className="text-sm font-semibold tabular-nums text-primary">
-                    {fmtBRL.format(result.precoSugerido)}
+                    {fmtBRL.format(result.suggested_price)}
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -233,7 +170,7 @@ export function PriceEstimateModal({
                     Máximo
                   </span>
                   <span className="text-sm font-semibold tabular-nums">
-                    {fmtBRL.format(result.precoMaximo)}
+                    {fmtBRL.format(result.max_price)}
                   </span>
                 </div>
               </div>
@@ -242,7 +179,7 @@ export function PriceEstimateModal({
                   Justificativa
                 </span>
                 <p className="text-xs leading-relaxed text-foreground/80 mt-0.5">
-                  {result.justificativa}
+                  {result.justification}
                 </p>
               </div>
             </div>
@@ -353,15 +290,28 @@ export function PriceEstimateModal({
                         </span>
                       </div>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(item.estimatedAt).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(item.estimatedAt).toLocaleDateString(
+                          "pt-BR",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </span>
+                      {item.usage && (
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          Custo: {fmtBRL.format(item.usage.estimatedCostBRL)}{" "}
+                          <span className="opacity-60">
+                            (US$ {item.usage.estimatedCostUSD.toFixed(4)})
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -372,7 +322,7 @@ export function PriceEstimateModal({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Fechar</AlertDialogCancel>
           {!result && (
-            <Button onClick={handleEstimate} disabled={loading || !canSubmit}>
+            <Button onClick={handleEstimate} disabled={loading}>
               {loading ? "Estimando..." : "Estimar Preço"}
             </Button>
           )}

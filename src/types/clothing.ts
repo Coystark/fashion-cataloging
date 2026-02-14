@@ -382,4 +382,5 @@ export interface PriceEstimateEntry {
   precoSugerido: number;
   justificativa: string;
   estimatedAt: string;
+  usage?: AnalysisUsage;
 }

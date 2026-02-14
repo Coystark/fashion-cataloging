@@ -2,80 +2,72 @@ import type { AnalysisEntry, AnalysisUsage } from "@/types/clothing";
 import { ai, buildUsage } from "@/lib/gemini";
 
 export interface PriceEstimate {
-  precoMinimo: number;
-  precoMaximo: number;
-  precoSugerido: number;
-  justificativa: string;
+  min_price: number;
+  max_price: number;
+  suggested_price: number;
+  justification: string;
 }
 
 export interface PriceEstimateResult {
   estimate: PriceEstimate;
   usage: AnalysisUsage;
 }
-
-function buildPricingPrompt(
-  entry: AnalysisEntry,
-  qualidade: string,
-  marca: string
-): string {
-  return `Você é um especialista em precificação de moda de segunda mão no mercado brasileiro. Com base nas informações abaixo sobre uma peça de roupa, estime o valor de revenda.
-
-IMPORTANTE: Use a ferramenta de busca do Google (Google Search) para pesquisar preços reais e atualizados desta peça ou de peças similares em plataformas brasileiras de revenda como Repassa, Enjoei, Troc, OLX, Mercado Livre, e brechós online. Busque por "${marca} ${
-    entry.categories.main
-  }" e termos relacionados para encontrar uma base de valores reais do mercado.
-
-INFORMAÇÕES DO PRODUTO:
-- Título: ${entry.suggestedTitle}
-- Descrição: ${entry.suggestedDescription}
-- Categoria Principal: ${entry.categories.main}
-- Subcategorias: ${entry.categories.sub.join(", ")}
-- Departamento: ${entry.categories.department.join(", ")}
-- Cor Principal: ${entry.color.primary}
-- Estampa: ${entry.color.pattern.join(", ")}
-- Silhueta: ${entry.shape?.join(", ") ?? "não identificada"}
-- Caimento: ${entry.fit?.join(", ") ?? "não identificada"}
-- Comprimento: ${entry.length}
-- Estética: ${entry.aesthetics.join(", ")}
-- Ocasião: ${entry.occasion.join(", ")}
-- Acabamento: ${entry.finish.join(", ")}
-- Fechamento: ${entry.closure.join(", ")}
-- Composição: ${
+function buildPricingPrompt(entry: AnalysisEntry): string {
+  // Extraímos os materiais para facilitar a leitura da IA
+  const compositionStr =
     (entry.composition ?? [])
       .map((c) => `${c.fiber} ${c.percentage}%`)
-      .join(", ") || "não identificada"
-  }
-- Condição (análise IA): ${entry.condition}
+      .join(", ") || "não identificada";
 
-INFORMAÇÕES DO USUÁRIO:
-- Qualidade/Estado: ${qualidade}
-- Marca: ${marca}
+  const marca = entry.brand || "sem marca";
 
-REGRAS:
-- Pesquise na internet preços reais de peças iguais ou similares à venda em brechós e plataformas de revenda brasileiras
-- Use os preços encontrados online como base principal para sua estimativa
-- Considere o mercado brasileiro de revenda de roupas (brechós online, plataformas como Repassa, Enjoei, etc.)
-- Leve em conta a marca, qualidade/estado da peça, material, categoria e ocasião de uso
-- Marcas premium/luxo devem ter preços significativamente maiores
-- Peças em melhor estado conservam mais valor
-- Retorne valores em Reais (BRL)
-- A justificativa deve ter 2-3 frases explicando o racional do preço, mencionando os valores de referência encontrados na internet quando disponíveis
+  return `You are a specialist in the Brazilian second-hand fashion market. Your goal is to provide a precise price estimation based on real-time market data.
 
-Retorne APENAS um objeto JSON puro (sem markdown, sem \`\`\`, sem texto antes ou depois) com:
-- precoMinimo: valor mínimo estimado (número)
-- precoMaximo: valor máximo estimado (número)
-- precoSugerido: valor sugerido para venda (número)
-- justificativa: explicação do racional de precificação, citando referências de preços encontrados online quando possível (string)
+### STEP 1: MARKET RESEARCH (MANDATORY)
+Use the Google Search tool to find current prices for: "${
+    entry.suggestedTitle
+  }" and similar items from the same brand. 
+Target platforms: Enjoei, Repassa, Troc, Mercado Livre, and OLX. 
+Identify the price range (min/max) currently being asked for this type of garment.
 
-Exemplo de formato esperado:
-{"precoMinimo": 50, "precoMaximo": 120, "precoSugerido": 80, "justificativa": "Texto aqui"}`;
+### STEP 2: PRODUCT CONTEXT
+- **Title:** ${entry.suggestedTitle}
+- **Brand:** ${marca}
+- **Condition:** ${entry.condition}
+- **Category:** ${entry.categories.main} (${entry.categories.sub.join(", ")})
+- **Details:** ${entry.color.pattern.join(", ")}, ${
+    entry.shape?.join(", ") || "N/A"
+  }, ${entry.fit?.join(", ") || "N/A"}
+- **Composition:** ${compositionStr}
+- **Aesthetics:** ${entry.aesthetics.join(", ")}
+
+### STEP 3: PRICING LOGIC
+1. **Reference Base:** Start with the prices found during your Google Search.
+2. **Brand Weight:** Adjust based on the brand's market position (Mass market, Premium, or Luxury).
+3. **Depreciation:** Apply discounts based on the provided quality/condition.
+4. **Suggested Price:** Define a value that balances fast-selling potential with fair market value.
+
+### STEP 4: OUTPUT RULES
+- All currency values must be in BRL (numeric).
+- The 'justification' must be in **Portuguese (pt-BR)**, explaining the logic and citing the price references found online.
+- RETURN ONLY A RAW JSON OBJECT. NO MARKDOWN, NO PREAMBLE.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "min_price": number,
+  "max_price": number,
+  "suggested_price": number,
+  "justification": "string (in pt-BR)"
+}
+
+### EXAMPLE OUTPUT:
+{"min_price": 80, "max_price": 150, "suggested_price": 110, "justification": "Com base em peças similares da Farm encontradas no Enjoei e Repassa, os valores variam entre R$ 90 e R$ 180. Considerando o estado 'muito bom' da peça e sua composição em viscose, sugerimos R$ 110 para uma venda competitiva."}`;
 }
 
 export async function estimatePrice(
-  entry: AnalysisEntry,
-  qualidade: string,
-  marca: string
+  entry: AnalysisEntry
 ): Promise<PriceEstimateResult> {
-  const prompt = buildPricingPrompt(entry, qualidade, marca);
+  const prompt = buildPricingPrompt(entry);
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
