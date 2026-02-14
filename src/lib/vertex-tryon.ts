@@ -16,9 +16,19 @@ const GCP_ACCESS_TOKEN = import.meta.env.VITE_GCP_ACCESS_TOKEN as string;
 
 const MODEL_ID = "virtual-try-on-preview-08-04";
 
+/** Custo estimado por imagem gerada (USD) — ajuste conforme pricing real */
+const TRYON_COST_PER_IMAGE_USD = 0.05;
+const USD_TO_BRL = 5.8;
+
 export interface TryOnResult {
   /** Data URL da imagem gerada (image/png) */
   imageDataUrl: string;
+  /** Custo estimado em USD */
+  estimatedCostUSD: number;
+  /** Custo estimado em BRL */
+  estimatedCostBRL: number;
+  /** Tempo da requisição em milissegundos */
+  elapsedMs: number;
 }
 
 /** Dimensão máxima (largura ou altura) para as imagens enviadas à API */
@@ -127,6 +137,8 @@ export async function generateTryOn(
     },
   };
 
+  const startTime = Date.now();
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -135,6 +147,8 @@ export async function generateTryOn(
     },
     body: JSON.stringify(body),
   });
+
+  const elapsedMs = Date.now() - startTime;
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -156,6 +170,8 @@ export async function generateTryOn(
   }
 
   const imageDataUrl = `data:image/png;base64,${base64Image}`;
+  const estimatedCostUSD = TRYON_COST_PER_IMAGE_USD;
+  const estimatedCostBRL = estimatedCostUSD * USD_TO_BRL;
 
-  return { imageDataUrl };
+  return { imageDataUrl, estimatedCostUSD, estimatedCostBRL, elapsedMs };
 }

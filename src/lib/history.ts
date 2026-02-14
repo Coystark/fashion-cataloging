@@ -119,13 +119,63 @@ export function computeItemAverages(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Histórico de Virtual Try-On                                        */
+/* ------------------------------------------------------------------ */
+
+const TRYON_STORAGE_KEY = "tryon-history";
+
+export interface TryOnHistoryItem {
+  id: string;
+  analysisId: string;
+  productImage: string;
+  personImage: string;
+  resultImage: string;
+  estimatedCostUSD: number;
+  estimatedCostBRL: number;
+  elapsedMs: number;
+  createdAt: string;
+}
+
+export function loadTryOnHistory(): TryOnHistoryItem[] {
+  try {
+    const raw = localStorage.getItem(TRYON_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as TryOnHistoryItem[];
+  } catch {
+    return [];
+  }
+}
+
+export function loadTryOnHistoryForItem(
+  analysisId: string
+): TryOnHistoryItem[] {
+  return loadTryOnHistory().filter((e) => e.analysisId === analysisId);
+}
+
+export function saveTryOnEntry(entry: TryOnHistoryItem): void {
+  const history = loadTryOnHistory();
+  history.unshift(entry);
+  localStorage.setItem(TRYON_STORAGE_KEY, JSON.stringify(history));
+}
+
+export function deleteTryOnEntry(id: string): void {
+  const history = loadTryOnHistory().filter((e) => e.id !== id);
+  localStorage.setItem(TRYON_STORAGE_KEY, JSON.stringify(history));
+}
+
+export function clearTryOnHistory(): void {
+  localStorage.removeItem(TRYON_STORAGE_KEY);
+}
+
 /**
  * Redimensiona uma imagem data-URL para no máximo `maxSize` px (lado maior),
  * retornando uma nova data-URL JPEG comprimida para caber no localStorage.
  */
 export function resizeImageDataUrl(
   dataUrl: string,
-  maxSize = 200
+  maxSize = 200,
+  quality = 0.7
 ): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -137,7 +187,7 @@ export function resizeImageDataUrl(
       canvas.height = Math.round(height * scale);
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
+      resolve(canvas.toDataURL("image/jpeg", quality));
     };
     img.src = dataUrl;
   });
